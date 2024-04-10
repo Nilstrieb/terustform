@@ -1,8 +1,0 @@
-#!/usr/bin/env bash
-
-echo "use nix" > .envrc
-cat > shell.nix <<EOF
-{ pkgs ? import <nixpkgs> {} }: pkgs.mkShell {
-    packages = [];
-}
-EOF

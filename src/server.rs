@@ -4,11 +4,16 @@ pub mod tfplugin6 {
     tonic::include_proto!("tfplugin6");
 }
 
-use std::{collections::HashMap, vec};
+use std::{
+    collections::{BTreeMap, HashMap},
+    vec,
+};
 
 use tfplugin6::provider_server::{Provider, ProviderServer};
 use tonic::{transport::Server, Request, Response, Result, Status};
 use tracing::info;
+
+use crate::values::Type;
 
 #[derive(Debug, Default)]
 pub struct MyProvider;
@@ -57,7 +62,31 @@ impl Provider for MyProvider {
                 get_provider_schema_optional: true,
                 move_resource_state: false,
             }),
-            data_source_schemas: HashMap::default(),
+            data_source_schemas: HashMap::from([(
+                "terustform_kitty".to_owned(),
+                tfplugin6::Schema {
+                    version: 1,
+                    block: Some(tfplugin6::schema::Block {
+                        version: 0,
+                        attributes: vec![tfplugin6::schema::Attribute {
+                            name: "kitten".to_owned(),
+                            r#type: Type::String.to_json().into_bytes(),
+                            nested_type: None,
+                            description: "what sound does the kitten make?".to_owned(),
+                            required: false,
+                            optional: false,
+                            computed: true,
+                            sensitive: false,
+                            description_kind: 0,
+                            deprecated: false,
+                        }],
+                        block_types: vec![],
+                        description: "something or nothing?".to_owned(),
+                        description_kind: 0,
+                        deprecated: false,
+                    }),
+                },
+            )]),
             resource_schemas: HashMap::from([("terustform_hello".to_owned(), empty_schema())]),
             functions: HashMap::default(),
             diagnostics: vec![],
@@ -93,8 +122,13 @@ impl Provider for MyProvider {
         &self,
         request: Request<tfplugin6::validate_data_resource_config::Request>,
     ) -> Result<Response<tfplugin6::validate_data_resource_config::Response>, Status> {
-        tracing::error!("validate_data_resource_config");
-        todo!("validate_data_resource_config")
+        tracing::info!("validate_data_resource_config");
+
+        let reply = tfplugin6::validate_data_resource_config::Response {
+            diagnostics: vec![],
+        };
+
+        Ok(Response::new(reply))
     }
     async fn upgrade_resource_state(
         &self,
@@ -126,10 +160,10 @@ impl Provider for MyProvider {
         &self,
         request: Request<tfplugin6::plan_resource_change::Request>,
     ) -> Result<Response<tfplugin6::plan_resource_change::Response>, Status> {
-        tracing::error!("plan_resource_change");
+        tracing::info!("plan_resource_change");
 
         let reply = tfplugin6::plan_resource_change::Response {
-            planned_state: todo!(),
+            planned_state: request.into_inner().proposed_new_state,
             requires_replace: vec![],
             planned_private: vec![],
             diagnostics: vec![],
@@ -137,15 +171,22 @@ impl Provider for MyProvider {
             deferred: None,
         };
 
-        todo!("plan_resource_change")
+        Ok(Response::new(reply))
     }
     async fn apply_resource_change(
         &self,
         request: Request<tfplugin6::apply_resource_change::Request>,
     ) -> Result<Response<tfplugin6::apply_resource_change::Response>, Status> {
-        tracing::error!("apply_resource_change");
+        tracing::info!("apply_resource_change");
 
-        todo!("apply_resource_change")
+        let reply = tfplugin6::apply_resource_change::Response {
+            new_state: request.into_inner().planned_state,
+            private: vec![],
+            diagnostics: vec![],
+            legacy_type_system: false,
+        };
+
+        Ok(Response::new(reply))
     }
     async fn import_resource_state(
         &self,
@@ -169,7 +210,22 @@ impl Provider for MyProvider {
     ) -> Result<Response<tfplugin6::read_data_source::Response>, Status> {
         tracing::error!("read_data_source");
 
-        todo!("read_data_source")
+        let reply = tfplugin6::read_data_source::Response {
+            state: Some(tfplugin6::DynamicValue {
+                msgpack: crate::values::Value::Object(BTreeMap::from([(
+                    "kitten".to_owned(),
+                    Box::new(crate::values::Value::String("meow".to_owned())),
+                )]))
+                .msg_pack(),
+                json: vec![],
+            }),
+            deferred: None,
+            diagnostics: vec![],
+        };
+
+        dbg!(request);
+
+        Ok(Response::new(reply))
     }
     /// GetFunctions returns the definitions of all functions.
     async fn get_functions(

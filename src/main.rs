@@ -1,5 +1,6 @@
 mod cert;
 mod server;
+mod values;
 
 use std::{env, path::PathBuf};
 
@@ -35,7 +36,6 @@ async fn main() -> eyre::Result<()> {
         .identity(server_identity)
         .client_auth_optional(true) // ??? terraform doesn't send certs ???
         .client_ca_root(client_cert);
-
 
     info!("Listening on {}", socket.display());
 
