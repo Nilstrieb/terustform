@@ -1,12 +1,31 @@
+#![allow(unused_variables, unused_imports)]
+
 pub mod tfplugin6 {
     tonic::include_proto!("tfplugin6");
 }
 
+use std::{collections::HashMap, vec};
+
 use tfplugin6::provider_server::{Provider, ProviderServer};
 use tonic::{transport::Server, Request, Response, Result, Status};
+use tracing::info;
 
 #[derive(Debug, Default)]
 pub struct MyProvider;
+
+fn empty_schema() -> tfplugin6::Schema {
+    tfplugin6::Schema {
+        version: 1,
+        block: Some(tfplugin6::schema::Block {
+            version: 0,
+            attributes: vec![],
+            block_types: vec![],
+            description: "hello world".to_owned(),
+            description_kind: 0,
+            deprecated: false,
+        }),
+    }
+}
 
 #[tonic::async_trait]
 impl Provider for MyProvider {
@@ -17,122 +36,166 @@ impl Provider for MyProvider {
     /// ignore the error and call the GetProviderSchema RPC as a fallback.
     async fn get_metadata(
         &self,
-        request: tonic::Request<tfplugin6::get_metadata::Request>,
-    ) -> std::result::Result<tonic::Response<tfplugin6::get_metadata::Response>, tonic::Status> {
-        todo!()
+        request: Request<tfplugin6::get_metadata::Request>,
+    ) -> Result<Response<tfplugin6::get_metadata::Response>, Status> {
+        Err(Status::unimplemented(
+            "GetMetadata: Not implemeneted".to_owned(),
+        ))
     }
     /// GetSchema returns schema information for the provider, data resources,
     /// and managed resources.
     async fn get_provider_schema(
         &self,
-        request: tonic::Request<tfplugin6::get_provider_schema::Request>,
-    ) -> std::result::Result<tonic::Response<tfplugin6::get_provider_schema::Response>, tonic::Status>
-    {
-        todo!()
+        request: Request<tfplugin6::get_provider_schema::Request>,
+    ) -> Result<Response<tfplugin6::get_provider_schema::Response>, Status> {
+        info!("Received get_provider_schema");
+        let reply = tfplugin6::get_provider_schema::Response {
+            provider: Some(empty_schema()),
+            provider_meta: Some(empty_schema()),
+            server_capabilities: Some(tfplugin6::ServerCapabilities {
+                plan_destroy: true,
+                get_provider_schema_optional: true,
+                move_resource_state: false,
+            }),
+            data_source_schemas: HashMap::default(),
+            resource_schemas: HashMap::from([("terustform_hello".to_owned(), empty_schema())]),
+            functions: HashMap::default(),
+            diagnostics: vec![],
+        };
+
+        Ok(Response::new(reply))
     }
     async fn validate_provider_config(
         &self,
-        request: tonic::Request<tfplugin6::validate_provider_config::Request>,
-    ) -> std::result::Result<
-        tonic::Response<tfplugin6::validate_provider_config::Response>,
-        tonic::Status,
-    > {
-        todo!()
+        request: Request<tfplugin6::validate_provider_config::Request>,
+    ) -> Result<Response<tfplugin6::validate_provider_config::Response>, Status> {
+        tracing::info!("validate_provider_config");
+
+        let reply = tfplugin6::validate_provider_config::Response {
+            diagnostics: vec![],
+        };
+
+        Ok(Response::new(reply))
     }
     async fn validate_resource_config(
         &self,
-        request: tonic::Request<tfplugin6::validate_resource_config::Request>,
-    ) -> std::result::Result<
-        tonic::Response<tfplugin6::validate_resource_config::Response>,
-        tonic::Status,
-    > {
-        todo!()
+        request: Request<tfplugin6::validate_resource_config::Request>,
+    ) -> Result<Response<tfplugin6::validate_resource_config::Response>, Status> {
+        tracing::info!("validate_resource_config");
+
+        let reply = tfplugin6::validate_resource_config::Response {
+            diagnostics: vec![],
+        };
+
+        Ok(Response::new(reply))
     }
     async fn validate_data_resource_config(
         &self,
-        request: tonic::Request<tfplugin6::validate_data_resource_config::Request>,
-    ) -> std::result::Result<
-        tonic::Response<tfplugin6::validate_data_resource_config::Response>,
-        tonic::Status,
-    > {
-        todo!()
+        request: Request<tfplugin6::validate_data_resource_config::Request>,
+    ) -> Result<Response<tfplugin6::validate_data_resource_config::Response>, Status> {
+        tracing::error!("validate_data_resource_config");
+        todo!("validate_data_resource_config")
     }
     async fn upgrade_resource_state(
         &self,
-        request: tonic::Request<tfplugin6::upgrade_resource_state::Request>,
-    ) -> std::result::Result<tonic::Response<tfplugin6::upgrade_resource_state::Response>, tonic::Status>
-    {
-        todo!()
+        request: Request<tfplugin6::upgrade_resource_state::Request>,
+    ) -> Result<Response<tfplugin6::upgrade_resource_state::Response>, Status> {
+        tracing::error!("upgrade_resource_state");
+        todo!("upgrade_resource_state")
     }
     /// ////// One-time initialization, called before other functions below
     async fn configure_provider(
         &self,
-        request: tonic::Request<tfplugin6::configure_provider::Request>,
-    ) -> std::result::Result<tonic::Response<tfplugin6::configure_provider::Response>, tonic::Status>
-    {
-        todo!()
+        request: Request<tfplugin6::configure_provider::Request>,
+    ) -> Result<Response<tfplugin6::configure_provider::Response>, Status> {
+        tracing::info!("configure_provider");
+        let reply = tfplugin6::configure_provider::Response {
+            diagnostics: vec![],
+        };
+        Ok(Response::new(reply))
     }
     /// ////// Managed Resource Lifecycle
     async fn read_resource(
         &self,
-        request: tonic::Request<tfplugin6::read_resource::Request>,
-    ) -> std::result::Result<tonic::Response<tfplugin6::read_resource::Response>, tonic::Status> {
-        todo!()
+        request: Request<tfplugin6::read_resource::Request>,
+    ) -> Result<Response<tfplugin6::read_resource::Response>, Status> {
+        tracing::error!("read_resource");
+        todo!("read_resource")
     }
     async fn plan_resource_change(
         &self,
-        request: tonic::Request<tfplugin6::plan_resource_change::Request>,
-    ) -> std::result::Result<tonic::Response<tfplugin6::plan_resource_change::Response>, tonic::Status>
-    {
-        todo!()
+        request: Request<tfplugin6::plan_resource_change::Request>,
+    ) -> Result<Response<tfplugin6::plan_resource_change::Response>, Status> {
+        tracing::error!("plan_resource_change");
+
+        let reply = tfplugin6::plan_resource_change::Response {
+            planned_state: todo!(),
+            requires_replace: vec![],
+            planned_private: vec![],
+            diagnostics: vec![],
+            legacy_type_system: false,
+            deferred: None,
+        };
+
+        todo!("plan_resource_change")
     }
     async fn apply_resource_change(
         &self,
-        request: tonic::Request<tfplugin6::apply_resource_change::Request>,
-    ) -> std::result::Result<tonic::Response<tfplugin6::apply_resource_change::Response>, tonic::Status>
-    {
-        todo!()
+        request: Request<tfplugin6::apply_resource_change::Request>,
+    ) -> Result<Response<tfplugin6::apply_resource_change::Response>, Status> {
+        tracing::error!("apply_resource_change");
+
+        todo!("apply_resource_change")
     }
     async fn import_resource_state(
         &self,
-        request: tonic::Request<tfplugin6::import_resource_state::Request>,
-    ) -> std::result::Result<tonic::Response<tfplugin6::import_resource_state::Response>, tonic::Status>
-    {
-        todo!()
+        request: Request<tfplugin6::import_resource_state::Request>,
+    ) -> Result<Response<tfplugin6::import_resource_state::Response>, Status> {
+        tracing::error!("import_resource_state");
+
+        todo!("import_resource_state")
     }
     async fn move_resource_state(
         &self,
-        request: tonic::Request<tfplugin6::move_resource_state::Request>,
-    ) -> std::result::Result<tonic::Response<tfplugin6::move_resource_state::Response>, tonic::Status>
-    {
-        todo!()
+        request: Request<tfplugin6::move_resource_state::Request>,
+    ) -> Result<Response<tfplugin6::move_resource_state::Response>, Status> {
+        tracing::error!("move_resource_state");
+
+        todo!("move_resource_state")
     }
     async fn read_data_source(
         &self,
-        request: tonic::Request<tfplugin6::read_data_source::Request>,
-    ) -> std::result::Result<tonic::Response<tfplugin6::read_data_source::Response>, tonic::Status>
-    {
-        todo!()
+        request: Request<tfplugin6::read_data_source::Request>,
+    ) -> Result<Response<tfplugin6::read_data_source::Response>, Status> {
+        tracing::error!("read_data_source");
+
+        todo!("read_data_source")
     }
     /// GetFunctions returns the definitions of all functions.
     async fn get_functions(
         &self,
-        request: tonic::Request<tfplugin6::get_functions::Request>,
-    ) -> std::result::Result<tonic::Response<tfplugin6::get_functions::Response>, tonic::Status> {
-        todo!()
+        request: Request<tfplugin6::get_functions::Request>,
+    ) -> Result<Response<tfplugin6::get_functions::Response>, Status> {
+        tracing::error!("get_functions");
+
+        todo!("get_functions")
     }
     /// ////// Provider-contributed Functions
     async fn call_function(
         &self,
-        request: tonic::Request<tfplugin6::call_function::Request>,
-    ) -> std::result::Result<tonic::Response<tfplugin6::call_function::Response>, tonic::Status> {
-        todo!()
+        request: Request<tfplugin6::call_function::Request>,
+    ) -> Result<Response<tfplugin6::call_function::Response>, Status> {
+        tracing::error!("call_function");
+
+        todo!("call_function")
     }
     /// ////// Graceful Shutdown
     async fn stop_provider(
         &self,
-        request: tonic::Request<tfplugin6::stop_provider::Request>,
-    ) -> std::result::Result<tonic::Response<tfplugin6::stop_provider::Response>, tonic::Status> {
-        todo!()
+        request: Request<tfplugin6::stop_provider::Request>,
+    ) -> Result<Response<tfplugin6::stop_provider::Response>, Status> {
+        tracing::error!("stop_provider");
+
+        todo!("stop_provider")
     }
 }

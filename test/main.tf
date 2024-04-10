@@ -5,3 +5,7 @@ terraform {
     }
   }
 }
+
+provider "terustform" {}
+
+resource "terustform_hello" "test1" {}
