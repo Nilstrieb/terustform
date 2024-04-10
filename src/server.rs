@@ -208,7 +208,7 @@ impl Provider for MyProvider {
         &self,
         request: Request<tfplugin6::read_data_source::Request>,
     ) -> Result<Response<tfplugin6::read_data_source::Response>, Status> {
-        tracing::error!("read_data_source");
+        tracing::info!("read_data_source");
 
         let reply = tfplugin6::read_data_source::Response {
             state: Some(tfplugin6::DynamicValue {

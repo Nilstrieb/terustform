@@ -17,11 +17,6 @@ impl Type {
     }
 }
 
-pub struct DynamicValue {
-    msgpack: Option<Vec<u8>>,
-    json: Option<Vec<u8>>,
-}
-
 // this is very dumb and wrong
 pub enum Value {
     String(String),
