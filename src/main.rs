@@ -1,7 +1,7 @@
 mod cert;
+mod framework;
 mod server;
 mod values;
-mod framework;
 
 use std::{env, path::PathBuf};
 
@@ -43,15 +43,31 @@ async fn main() -> eyre::Result<()> {
     let uds = UnixListener::bind(socket).wrap_err("failed to bind unix listener")?;
     let uds_stream = tokio_stream::wrappers::UnixListenerStream::new(uds);
 
-    tonic::transport::Server::builder()
+    let token = tokio_util::sync::CancellationToken::new();
+
+    let server = tonic::transport::Server::builder()
         .tls_config(tls)
         .wrap_err("invalid TLS config")?
         .add_service(server::tfplugin6::provider_server::ProviderServer::new(
-            server::MyProvider,
+            server::MyProvider {
+                shutdown: token.clone(),
+            },
         ))
-        .serve_with_incoming(uds_stream)
-        .await
-        .wrap_err("failed to start server")?;
+        .add_service(
+            server::plugin::grpc_controller_server::GrpcControllerServer::new(
+                server::MyController {
+                    shutdown: token.clone(),
+                },
+            ),
+        )
+        .serve_with_incoming(uds_stream);
+
+    tokio::select! {
+        _ = token.cancelled() => {}
+        result = server => {
+            result.wrap_err("failed to start server")?;
+        }
+    }
 
     Ok(())
 }

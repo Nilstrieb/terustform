@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 pub trait DataSource {
     fn schema(&self);
     fn read(&self) -> DResult<()>;

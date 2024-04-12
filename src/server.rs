@@ -4,19 +4,27 @@ pub mod tfplugin6 {
     tonic::include_proto!("tfplugin6");
 }
 
+pub mod plugin {
+    tonic::include_proto!("plugin");
+}
+
 use std::{
     collections::{BTreeMap, HashMap},
+    sync::Mutex,
     vec,
 };
 
 use tfplugin6::provider_server::{Provider, ProviderServer};
+use tokio_util::sync::CancellationToken;
 use tonic::{transport::Server, Request, Response, Result, Status};
 use tracing::info;
 
 use crate::values::Type;
 
-#[derive(Debug, Default)]
-pub struct MyProvider;
+#[derive(Debug)]
+pub struct MyProvider {
+    pub shutdown: CancellationToken,
+}
 
 fn empty_schema() -> tfplugin6::Schema {
     tfplugin6::Schema {
@@ -43,6 +51,7 @@ impl Provider for MyProvider {
         &self,
         request: Request<tfplugin6::get_metadata::Request>,
     ) -> Result<Response<tfplugin6::get_metadata::Response>, Status> {
+        info!("get_metadata");
         Err(Status::unimplemented(
             "GetMetadata: Not implemeneted".to_owned(),
         ))
@@ -250,8 +259,25 @@ impl Provider for MyProvider {
         &self,
         request: Request<tfplugin6::stop_provider::Request>,
     ) -> Result<Response<tfplugin6::stop_provider::Response>, Status> {
-        tracing::error!("stop_provider");
+        tracing::info!("stop_provider");
 
-        todo!("stop_provider")
+        shutdown(&self.shutdown).await
+    }
+}
+
+pub struct MyController {
+    pub shutdown: CancellationToken,
+}
+
+async fn shutdown(token: &CancellationToken) -> ! {
+    token.cancel();
+    std::future::poll_fn::<(), _>(|_| std::task::Poll::Pending).await;
+    unreachable!("we've should have gone to sleep")
+}
+
+#[tonic::async_trait]
+impl plugin::grpc_controller_server::GrpcController for MyController {
+    async fn shutdown(&self, request: Request<plugin::Empty>) -> Result<Response<plugin::Empty>> {
+        shutdown(&self.shutdown).await
     }
 }
