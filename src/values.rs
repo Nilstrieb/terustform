@@ -20,7 +20,7 @@ impl Type {
 // this is very dumb and wrong
 pub enum Value {
     String(String),
-    Object(BTreeMap<String, Box<Value>>)
+    Object(BTreeMap<String, Value>),
 }
 
 impl Value {

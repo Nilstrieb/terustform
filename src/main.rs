@@ -2,19 +2,25 @@ mod cert;
 mod framework;
 mod server;
 mod values;
+mod example;
 
 use std::{env, path::PathBuf};
 
 use base64::Engine;
 use eyre::{bail, Context, Result};
+use framework::provider::Provider;
 use tokio::net::UnixListener;
 use tonic::transport::{Certificate, ServerTlsConfig};
 use tracing::{info, Level};
 
 #[tokio::main]
 async fn main() -> eyre::Result<()> {
+    serve(&example::ExampleProvider {}).await
+}
+
+async fn serve(provider: &dyn Provider) -> eyre::Result<()> {
     tracing_subscriber::fmt()
-        .with_max_level(Level::DEBUG)
+        .with_max_level(Level::ERROR)
         .with_writer(std::io::stderr)
         .without_time()
         .init();
@@ -43,27 +49,25 @@ async fn main() -> eyre::Result<()> {
     let uds = UnixListener::bind(socket).wrap_err("failed to bind unix listener")?;
     let uds_stream = tokio_stream::wrappers::UnixListenerStream::new(uds);
 
-    let token = tokio_util::sync::CancellationToken::new();
+    let shutdown = tokio_util::sync::CancellationToken::new();
 
     let server = tonic::transport::Server::builder()
         .tls_config(tls)
         .wrap_err("invalid TLS config")?
-        .add_service(server::tfplugin6::provider_server::ProviderServer::new(
-            server::MyProvider {
-                shutdown: token.clone(),
-            },
+        .add_service(server::ProviderServer::new(
+            server::ProviderHandler::new(shutdown.clone(), provider),
         ))
         .add_service(
-            server::plugin::grpc_controller_server::GrpcControllerServer::new(
-                server::MyController {
-                    shutdown: token.clone(),
+            server::GrpcControllerServer::new(
+                server::Controller {
+                    shutdown: shutdown.clone(),
                 },
             ),
         )
         .serve_with_incoming(uds_stream);
 
     tokio::select! {
-        _ = token.cancelled() => {}
+        _ = shutdown.cancelled() => {}
         result = server => {
             result.wrap_err("failed to start server")?;
         }

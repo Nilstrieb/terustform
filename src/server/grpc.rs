@@ -21,11 +21,6 @@ use tracing::info;
 
 use crate::values::Type;
 
-#[derive(Debug)]
-pub struct MyProvider {
-    pub shutdown: CancellationToken,
-}
-
 fn empty_schema() -> tfplugin6::Schema {
     tfplugin6::Schema {
         version: 1,
@@ -41,12 +36,13 @@ fn empty_schema() -> tfplugin6::Schema {
 }
 
 #[tonic::async_trait]
-impl Provider for MyProvider {
+impl Provider for super::ProviderHandler {
     /// GetMetadata returns upfront information about server capabilities and
     /// supported resource types without requiring the server to instantiate all
     /// schema information, which may be memory intensive. This RPC is optional,
     /// where clients may receive an unimplemented RPC error. Clients should
     /// ignore the error and call the GetProviderSchema RPC as a fallback.
+    /// Returns data source, managed resource, and function metadata, such as names.
     async fn get_metadata(
         &self,
         request: Request<tfplugin6::get_metadata::Request>,
@@ -58,11 +54,15 @@ impl Provider for MyProvider {
     }
     /// GetSchema returns schema information for the provider, data resources,
     /// and managed resources.
+    /// Returns provider schema, provider metaschema, all resource schemas and all data source schemas.
     async fn get_provider_schema(
         &self,
         request: Request<tfplugin6::get_provider_schema::Request>,
     ) -> Result<Response<tfplugin6::get_provider_schema::Response>, Status> {
         info!("Received get_provider_schema");
+
+        let schemas = self.get_schemas();
+
         let reply = tfplugin6::get_provider_schema::Response {
             provider: Some(empty_schema()),
             provider_meta: Some(empty_schema()),
@@ -71,38 +71,16 @@ impl Provider for MyProvider {
                 get_provider_schema_optional: true,
                 move_resource_state: false,
             }),
-            data_source_schemas: HashMap::from([(
-                "terustform_kitty".to_owned(),
-                tfplugin6::Schema {
-                    version: 1,
-                    block: Some(tfplugin6::schema::Block {
-                        version: 0,
-                        attributes: vec![tfplugin6::schema::Attribute {
-                            name: "kitten".to_owned(),
-                            r#type: Type::String.to_json().into_bytes(),
-                            nested_type: None,
-                            description: "what sound does the kitten make?".to_owned(),
-                            required: false,
-                            optional: false,
-                            computed: true,
-                            sensitive: false,
-                            description_kind: 0,
-                            deprecated: false,
-                        }],
-                        block_types: vec![],
-                        description: "something or nothing?".to_owned(),
-                        description_kind: 0,
-                        deprecated: false,
-                    }),
-                },
-            )]),
-            resource_schemas: HashMap::from([("terustform_hello".to_owned(), empty_schema())]),
+            data_source_schemas: schemas.data_sources,
+            resource_schemas: schemas.resources,
             functions: HashMap::default(),
-            diagnostics: vec![],
+            diagnostics: schemas.diagnostics,
         };
 
         Ok(Response::new(reply))
     }
+
+    /// Validates the practitioner supplied provider configuration by verifying types conform to the schema and supports value validation diagnostics.
     async fn validate_provider_config(
         &self,
         request: Request<tfplugin6::validate_provider_config::Request>,
@@ -115,6 +93,8 @@ impl Provider for MyProvider {
 
         Ok(Response::new(reply))
     }
+
+    /// Validates the practitioner supplied resource configuration by verifying types conform to the schema and supports value validation diagnostics.
     async fn validate_resource_config(
         &self,
         request: Request<tfplugin6::validate_resource_config::Request>,
@@ -127,6 +107,8 @@ impl Provider for MyProvider {
 
         Ok(Response::new(reply))
     }
+
+    /// Validates the practitioner supplied data source configuration by verifying types conform to the schema and supports value validation diagnostics.
     async fn validate_data_resource_config(
         &self,
         request: Request<tfplugin6::validate_data_resource_config::Request>,
@@ -139,14 +121,24 @@ impl Provider for MyProvider {
 
         Ok(Response::new(reply))
     }
+
+    /// Called when a resource has existing state. Primarily useful for when the schema version does not match the current version.
+    /// The provider is expected to modify the state to upgrade it to the latest schema.
     async fn upgrade_resource_state(
         &self,
         request: Request<tfplugin6::upgrade_resource_state::Request>,
     ) -> Result<Response<tfplugin6::upgrade_resource_state::Response>, Status> {
-        tracing::error!("upgrade_resource_state");
-        todo!("upgrade_resource_state")
+        tracing::info!("upgrade_resource_state");
+        // We don't do anything interesting, it's fine.
+        let reply = tfplugin6::upgrade_resource_state::Response {
+            upgraded_state: None,
+            diagnostics: vec![],
+        };
+
+        Ok(Response::new(reply))
     }
     /// ////// One-time initialization, called before other functions below
+    /// Passes the practitioner supplied provider configuration to the provider.
     async fn configure_provider(
         &self,
         request: Request<tfplugin6::configure_provider::Request>,
@@ -158,13 +150,24 @@ impl Provider for MyProvider {
         Ok(Response::new(reply))
     }
     /// ////// Managed Resource Lifecycle
+    /// Called when refreshing a resource's state.
     async fn read_resource(
         &self,
         request: Request<tfplugin6::read_resource::Request>,
     ) -> Result<Response<tfplugin6::read_resource::Response>, Status> {
-        tracing::error!("read_resource");
-        todo!("read_resource")
+        tracing::info!("read_resource");
+
+        let reply = tfplugin6::read_resource::Response {
+            deferred: None,
+            diagnostics: vec![],
+            new_state: request.into_inner().current_state,
+            private: vec![],
+        };
+
+        Ok(Response::new(reply))
     }
+
+    /// Calculates a plan for a resource. A proposed new state is generated, which the provider can modify.
     async fn plan_resource_change(
         &self,
         request: Request<tfplugin6::plan_resource_change::Request>,
@@ -182,6 +185,9 @@ impl Provider for MyProvider {
 
         Ok(Response::new(reply))
     }
+
+    /// Called when a practitioner has approved a planned change.
+    /// The provider is to apply the changes contained in the plan, and return a resulting state matching the given plan.
     async fn apply_resource_change(
         &self,
         request: Request<tfplugin6::apply_resource_change::Request>,
@@ -197,6 +203,8 @@ impl Provider for MyProvider {
 
         Ok(Response::new(reply))
     }
+
+    /// Called when importing a resource into state so that the resource becomes managed.
     async fn import_resource_state(
         &self,
         request: Request<tfplugin6::import_resource_state::Request>,
@@ -213,26 +221,42 @@ impl Provider for MyProvider {
 
         todo!("move_resource_state")
     }
+
+    /// Called when refreshing a data source's state.
     async fn read_data_source(
         &self,
         request: Request<tfplugin6::read_data_source::Request>,
     ) -> Result<Response<tfplugin6::read_data_source::Response>, Status> {
         tracing::info!("read_data_source");
 
-        let reply = tfplugin6::read_data_source::Response {
-            state: Some(tfplugin6::DynamicValue {
-                msgpack: crate::values::Value::Object(BTreeMap::from([(
-                    "kitten".to_owned(),
-                    Box::new(crate::values::Value::String("meow".to_owned())),
-                )]))
-                .msg_pack(),
-                json: vec![],
-            }),
-            deferred: None,
-            diagnostics: vec![],
+        let ds = self
+            .state
+            .as_ref()
+            .unwrap()
+            .data_sources
+            .get(&request.get_ref().type_name)
+            .unwrap();
+
+        let state = ds.read(crate::values::Value::Object(BTreeMap::from([(
+            "name".to_owned(),
+            crate::values::Value::String("mykitten".to_owned()),
+        )])));
+        let (state, diagnostics) = match state {
+            Ok(s) => (
+                Some(tfplugin6::DynamicValue {
+                    msgpack: s.msg_pack(),
+                    json: vec![],
+                }),
+                vec![],
+            ),
+            Err(errs) => (None, errs.to_tfplugin_diags()),
         };
 
-        dbg!(request);
+        let reply = tfplugin6::read_data_source::Response {
+            state,
+            deferred: None,
+            diagnostics,
+        };
 
         Ok(Response::new(reply))
     }
@@ -265,7 +289,7 @@ impl Provider for MyProvider {
     }
 }
 
-pub struct MyController {
+pub struct Controller {
     pub shutdown: CancellationToken,
 }
 
@@ -276,7 +300,7 @@ async fn shutdown(token: &CancellationToken) -> ! {
 }
 
 #[tonic::async_trait]
-impl plugin::grpc_controller_server::GrpcController for MyController {
+impl plugin::grpc_controller_server::GrpcController for Controller {
     async fn shutdown(&self, request: Request<plugin::Empty>) -> Result<Response<plugin::Empty>> {
         shutdown(&self.shutdown).await
     }
