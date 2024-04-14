@@ -10,6 +10,7 @@ use rmp::encode::write_bool;
 
 use crate::framework::{DResult, Diagnostics};
 
+#[derive(Debug)]
 pub enum Type {
     Bool,
     Number,
@@ -166,6 +167,7 @@ impl Value {
     }
 
     pub fn msg_unpack(data: &[u8], typ: &Type) -> DResult<Self> {
+        tracing::debug!(?typ, ?data, "Unpacking message");
         let mut read = io::Cursor::new(data);
         Self::msg_unpack_inner(&mut read, typ)
     }
@@ -180,7 +182,7 @@ impl Value {
 
         let read_string = |rd: &mut io::Cursor<&[u8]>| -> DResult<String> {
             let len = std::cmp::min(mp::read_str_len(rd)?, 1024 * 1024); // you're not gonna get more than a 1MB string...
-            let mut buf = Vec::with_capacity(len as usize);
+            let mut buf = vec![0; len as usize];
             rd.read_exact(&mut buf)?;
             Ok(String::from_utf8(buf)?)
         };
@@ -209,13 +211,15 @@ impl Value {
             Type::Dynamic => todo!("dynamic"),
             Type::List { elem } => {
                 let len = mp::read_array_len(rd)?;
+
                 let elems = (0..len)
                     .map(|_| Value::msg_unpack_inner(rd, &elem))
                     .collect::<Result<Vec<_>, _>>()?;
                 ValueKind::List(elems)
             }
             Type::Map { elem } => {
-                let len = mp::read_array_len(rd)?;
+                let len = mp::read_map_len(rd)?;
+
                 let elems = (0..len)
                     .map(|_| -> DResult<_> {
                         let key = read_string(rd)?;
@@ -227,6 +231,7 @@ impl Value {
             }
             Type::Set { elem } => {
                 let len = mp::read_array_len(rd)?;
+
                 let elems = (0..len)
                     .map(|_| Value::msg_unpack_inner(rd, &elem))
                     .collect::<Result<Vec<_>, _>>()?;
@@ -234,7 +239,8 @@ impl Value {
             }
             Type::Object { attrs, optionals } => {
                 assert!(optionals.is_empty());
-                let len = mp::read_array_len(rd)?;
+                let len = mp::read_map_len(rd)?;
+
                 if attrs.len() != (len as usize) {
                     return Err(Diagnostics::error_string(format!(
                         "expected {} attrs, found {len} attrs in object",
@@ -245,7 +251,7 @@ impl Value {
                     .map(|_| -> DResult<_> {
                         let key = read_string(rd)?;
                         let typ = attrs.get(&key).ok_or_else(|| {
-                            Diagnostics::error_string(format!("unexpected attribute: {key}"))
+                            Diagnostics::error_string(format!("unexpected attribute: '{key}'"))
                         })?;
                         let value = Value::msg_unpack_inner(rd, &typ)?;
                         Ok((key, value))
@@ -261,11 +267,12 @@ impl Value {
                         elems.len()
                     )));
                 }
+
                 let elems = elems
                     .iter()
                     .map(|typ| Value::msg_unpack_inner(rd, &typ))
                     .collect::<Result<Vec<_>, _>>()?;
-                ValueKind::List(elems)
+                ValueKind::Tuple(elems)
             }
         };
 

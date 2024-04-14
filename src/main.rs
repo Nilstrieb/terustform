@@ -20,7 +20,7 @@ async fn main() -> eyre::Result<()> {
 
 async fn serve(provider: &dyn Provider) -> eyre::Result<()> {
     tracing_subscriber::fmt()
-        .with_max_level(Level::ERROR)
+        .with_max_level(Level::DEBUG)
         .with_writer(std::io::stderr)
         .without_time()
         .init();

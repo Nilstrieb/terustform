@@ -61,17 +61,20 @@ impl DataSource for ExampleDataSource {
     }
 
     fn read(&self, config: Value) -> DResult<Value> {
+        let name = match config {
+            Value::Known(ValueKind::Object(mut obj)) => obj.remove("name").unwrap(),
+            _ => unreachable!(),
+        };
+        let name_str = match &name {
+            Value::Known(ValueKind::String(s)) => s.clone(),
+            _ => unreachable!(),
+        };
+
         Ok(Value::Known(ValueKind::Object(BTreeMap::from([
-            (
-                "name".to_owned(),
-                match config {
-                    Value::Known(ValueKind::Object(mut obj)) => obj.remove("name").unwrap(),
-                    _ => unreachable!(),
-                },
-            ),
+            ("name".to_owned(), name),
             (
                 "meow".to_owned(),
-                Value::Known(ValueKind::String("mrrrrr".to_owned())),
+                Value::Known(ValueKind::String(format!("mrrrrr i am {name_str}"))),
             ),
             (
                 "id".to_owned(),

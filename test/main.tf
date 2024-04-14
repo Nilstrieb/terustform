@@ -11,16 +11,19 @@ provider "terustform" {}
 //resource "terustform_hello" "test1" {}
 
 data "terustform_kitty" "kitty" {
-  name = "mykitten"
+  name = "aa mykitten"
 }
 
 data "terustform_kitty" "hellyes" {
-  name = "a cute kitty"
+  name = "aa a cute kitty"
 }
 
 output "meow" {
   value = data.terustform_kitty.kitty.id
 }
-output "hellyes" {
+output "cat1" {
   value = data.terustform_kitty.kitty.meow
+}
+output "cat2" {
+  value = data.terustform_kitty.hellyes.meow
 }

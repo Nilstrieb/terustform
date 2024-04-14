@@ -255,14 +255,7 @@ impl Provider for super::ProviderHandler {
             }
         };
 
-        let state = ds.read(crate::values::Value::Known(
-            crate::values::ValueKind::Object(BTreeMap::from([(
-                "name".to_owned(),
-                crate::values::Value::Known(crate::values::ValueKind::String(
-                    "mykitten".to_owned(),
-                )),
-            )])),
-        ));
+        let state = ds.read(config);
         let (state, diagnostics) = match state {
             Ok(s) => (
                 Some(tfplugin6::DynamicValue {
