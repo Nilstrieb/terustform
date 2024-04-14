@@ -29,6 +29,7 @@ impl Provider for ExampleProvider {
 
 struct ExampleDataSource {}
 
+#[derive(terustform_macros::DataSourceModel)]
 struct _ExampleDataSourceModel {
     name: StringValue,
 }

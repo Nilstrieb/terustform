@@ -6,5 +6,6 @@ edition = "2021"
 [dependencies]
 eyre = "0.6.12"
 terustform = { path = "../terustform" }
+terustform-macros = { path = "../terustform-macros" }
 
 tokio = { version = "1.37.0", features = ["full"] }
