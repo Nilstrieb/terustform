@@ -6,7 +6,7 @@ use crate::{
         provider::Provider,
         DResult,
     },
-    values::Value,
+    values::{Value, ValueKind},
 };
 
 pub struct ExampleProvider {}
@@ -61,16 +61,22 @@ impl DataSource for ExampleDataSource {
     }
 
     fn read(&self, config: Value) -> DResult<Value> {
-        Ok(Value::Object(BTreeMap::from([
+        Ok(Value::Known(ValueKind::Object(BTreeMap::from([
             (
                 "name".to_owned(),
                 match config {
-                    Value::Object(mut obj) => obj.remove("name").unwrap(),
+                    Value::Known(ValueKind::Object(mut obj)) => obj.remove("name").unwrap(),
                     _ => unreachable!(),
                 },
             ),
-            ("meow".to_owned(), Value::String("mrrrrr".to_owned())),
-            ("id".to_owned(), Value::String("0".to_owned())),
-        ])))
+            (
+                "meow".to_owned(),
+                Value::Known(ValueKind::String("mrrrrr".to_owned())),
+            ),
+            (
+                "id".to_owned(),
+                Value::Known(ValueKind::String("0".to_owned())),
+            ),
+        ]))))
     }
 }

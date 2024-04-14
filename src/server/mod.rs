@@ -5,9 +5,8 @@ use std::collections::HashMap;
 
 use tokio_util::sync::CancellationToken;
 
-use crate::framework::datasource::{self, DataSource};
+use crate::framework::datasource::DataSource;
 use crate::framework::provider::Provider;
-use crate::framework::DResult;
 
 pub use grpc::plugin::grpc_controller_server::GrpcControllerServer;
 pub use grpc::tfplugin6::provider_server::ProviderServer;

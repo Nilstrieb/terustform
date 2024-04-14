@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::values::Value;
+use crate::values::{Type, Value};
 
 use super::DResult;
 
@@ -55,5 +55,27 @@ impl Mode {
 
     pub fn computed(&self) -> bool {
         matches!(self, Self::OptionalComputed | Self::Computed)
+    }
+}
+
+impl Schema {
+    pub fn typ(&self) -> Type {
+        let attrs = self
+            .attributes
+            .iter()
+            .map(|(name, attr)| {
+                let attr_type = match attr {
+                    Attribute::Int64 { .. } => Type::Number,
+                    Attribute::String { .. } => Type::String,
+                };
+
+                (name.clone(), attr_type)
+            })
+            .collect();
+
+        Type::Object {
+            attrs,
+            optionals: vec![],
+        }
     }
 }

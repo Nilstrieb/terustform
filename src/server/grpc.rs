@@ -237,10 +237,32 @@ impl Provider for super::ProviderHandler {
             .get(&request.get_ref().type_name)
             .unwrap();
 
-        let state = ds.read(crate::values::Value::Object(BTreeMap::from([(
-            "name".to_owned(),
-            crate::values::Value::String("mykitten".to_owned()),
-        )])));
+        let typ = ds.schema().typ();
+        let config = match &request.get_ref().config {
+            None => crate::values::Value::Null,
+            Some(v) => {
+                let value = crate::values::Value::msg_unpack(&v.msgpack, &typ);
+                match value {
+                    Ok(value) => value,
+                    Err(errs) => {
+                        return Ok(Response::new(tfplugin6::read_data_source::Response {
+                            deferred: None,
+                            state: None,
+                            diagnostics: errs.to_tfplugin_diags(),
+                        }));
+                    }
+                }
+            }
+        };
+
+        let state = ds.read(crate::values::Value::Known(
+            crate::values::ValueKind::Object(BTreeMap::from([(
+                "name".to_owned(),
+                crate::values::Value::Known(crate::values::ValueKind::String(
+                    "mykitten".to_owned(),
+                )),
+            )])),
+        ));
         let (state, diagnostics) = match state {
             Ok(s) => (
                 Some(tfplugin6::DynamicValue {
