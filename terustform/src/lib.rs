@@ -1,8 +1,7 @@
 mod cert;
-mod framework;
+pub mod framework;
 mod server;
-mod values;
-mod example;
+pub mod values;
 
 use std::{env, path::PathBuf};
 
@@ -13,12 +12,7 @@ use tokio::net::UnixListener;
 use tonic::transport::{Certificate, ServerTlsConfig};
 use tracing::{info, Level};
 
-#[tokio::main]
-async fn main() -> eyre::Result<()> {
-    serve(&example::ExampleProvider {}).await
-}
-
-async fn serve(provider: &dyn Provider) -> eyre::Result<()> {
+pub async fn serve(provider: &dyn Provider) -> eyre::Result<()> {
     tracing_subscriber::fmt()
         .with_max_level(Level::DEBUG)
         .with_writer(std::io::stderr)

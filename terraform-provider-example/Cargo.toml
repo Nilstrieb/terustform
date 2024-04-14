@@ -1,0 +1,10 @@
+[package]
+name = "terraform-provider-example"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+eyre = "0.6.12"
+terustform = { path = "../terustform" }
+
+tokio = { version = "1.37.0", features = ["full"] }

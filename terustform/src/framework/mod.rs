@@ -2,6 +2,7 @@
 
 pub mod datasource;
 pub mod provider;
+pub mod value;
 
 use self::datasource::DataSource;
 

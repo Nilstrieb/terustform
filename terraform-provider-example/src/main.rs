@@ -1,19 +1,25 @@
 use std::collections::{BTreeMap, HashMap};
 
-use crate::{
+use terustform::{
     framework::{
         datasource::{self, DataSource},
         provider::Provider,
+        value::StringValue,
         DResult,
     },
     values::{Value, ValueKind},
 };
 
+#[tokio::main]
+async fn main() -> eyre::Result<()> {
+    terustform::serve(&ExampleProvider {}).await
+}
+
 pub struct ExampleProvider {}
 
 impl Provider for ExampleProvider {
     fn name(&self) -> String {
-        "terustform".to_owned()
+        "example".to_owned()
     }
 
     fn data_sources(&self) -> Vec<Box<dyn DataSource>> {
@@ -22,6 +28,10 @@ impl Provider for ExampleProvider {
 }
 
 struct ExampleDataSource {}
+
+struct _ExampleDataSourceModel {
+    name: StringValue,
+}
 
 impl DataSource for ExampleDataSource {
     fn name(&self, provider_name: &str) -> String {

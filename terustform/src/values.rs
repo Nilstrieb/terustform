@@ -2,11 +2,9 @@
 //                           tftypes                    for types and values
 
 use std::{
-    collections::{BTreeMap, HashMap, HashSet},
+    collections::{BTreeMap, HashMap},
     io::{self, Read},
 };
-
-use rmp::encode::write_bool;
 
 use crate::framework::{DResult, Diagnostics};
 
