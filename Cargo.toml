@@ -3,7 +3,7 @@ resolver = "2"
 members = [
     "terustform",
     "terustform-macros",
-    "terraform-provider-example",
+    "terraform-provider-corsschool",
 ]
 
 [profile.release]
