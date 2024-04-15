@@ -6,7 +6,7 @@ use std::{
     io::{self, Read},
 };
 
-use crate::{BaseValue, DResult, Diagnostic};
+use crate::{AttrPath, DResult, Diagnostic};
 
 #[derive(Debug)]
 pub enum Type {
@@ -105,6 +105,70 @@ impl ValueKind {
             ValueKind::Tuple(_) => "tuple",
             ValueKind::Object(_) => "object",
         }
+    }
+}
+
+pub type StringValue = BaseValue<String>;
+pub type I64Value = BaseValue<i64>;
+
+#[derive(Debug)]
+pub enum BaseValue<T> {
+    Unknown,
+    Null,
+    Known(T),
+}
+
+impl<T> BaseValue<T> {
+    fn map<U>(self, f: impl FnOnce(T) -> U) -> BaseValue<U> {
+        self.try_map(|v| Ok(f(v))).unwrap()
+    }
+
+    fn try_map<U>(self, f: impl FnOnce(T) -> DResult<U>) -> DResult<BaseValue<U>> {
+        Ok(match self {
+            Self::Unknown => BaseValue::Unknown,
+            Self::Null => BaseValue::Null,
+            Self::Known(v) => BaseValue::Known(f(v)?),
+        })
+    }
+
+    pub fn expect_known(&self, path: AttrPath) -> DResult<&T> {
+        match self {
+            BaseValue::Null => Err(Diagnostic::error_string("expected value, found null value")
+                .with_path(path)
+                .into()),
+            BaseValue::Unknown => Err(Diagnostic::error_string(
+                "expected known value, found unknown value",
+            )
+            .with_path(path)
+            .into()),
+            BaseValue::Known(v) => Ok(v),
+        }
+    }
+}
+
+pub trait ValueModel: Sized {
+    fn from_value(v: Value, path: &AttrPath) -> DResult<Self>;
+
+    fn to_value(self) -> Value;
+}
+
+impl ValueModel for StringValue {
+    fn from_value(v: Value, path: &AttrPath) -> DResult<Self> {
+        v.try_map(|v| -> DResult<String> {
+            match v {
+                ValueKind::String(s) => Ok(s),
+                _ => Err(Diagnostic::error_string(format!(
+                    "expected string, found {}",
+                    v.diagnostic_type_str()
+                ))
+                .with_path(path.clone())
+                .into()),
+            }
+        })
+    }
+
+    fn to_value(self) -> Value {
+        self.map(ValueKind::String)
     }
 }
 

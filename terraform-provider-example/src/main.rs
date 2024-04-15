@@ -3,8 +3,7 @@ use std::collections::HashMap;
 use terustform::{
     datasource::{self, DataSource},
     provider::Provider,
-    values::Value,
-    AttrPath, DResult, StringValue, ValueModel,
+    AttrPath, DResult, StringValue, Value, ValueModel,
 };
 
 #[tokio::main]

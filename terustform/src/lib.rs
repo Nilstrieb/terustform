@@ -1,11 +1,13 @@
-mod base;
+mod diag;
+mod server;
+mod values;
+
 pub mod datasource;
 pub mod provider;
-mod server;
-pub mod values;
 
-pub use base::*;
+pub use diag::*;
 pub use terustform_macros::Model;
+pub use values::*;
 
 use provider::Provider;
 
@@ -24,9 +26,9 @@ pub async fn start(provider: &dyn Provider) -> eyre::Result<()> {
 /// Private, only for use for with the derive macro.
 #[doc(hidden)]
 pub mod __derive_private {
-    pub use crate::values::{Value, ValueKind};
     pub use crate::{
-        AttrPath, AttrPathSegment, BaseValue, DResult, Diagnostic, Diagnostics, ValueModel,
+        AttrPath, AttrPathSegment, BaseValue, DResult, Diagnostic, Diagnostics, Value, ValueKind,
+        ValueModel,
     };
     pub use {Clone, Option::Some, Result::Err, ToOwned};
 
