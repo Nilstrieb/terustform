@@ -1,4 +1,4 @@
-use std::collections::{BTreeMap, HashMap};
+use std::collections::HashMap;
 
 use terustform::{
     framework::{
@@ -6,7 +6,7 @@ use terustform::{
         provider::Provider,
         AttrPath, DResult, Diagnostics, StringValue, ValueModel,
     },
-    values::{Value, ValueKind},
+    values::Value,
 };
 
 #[tokio::main]
@@ -27,6 +27,13 @@ impl Provider for ExampleProvider {
 }
 
 struct ExampleDataSource {}
+
+#[derive(terustform::DataSourceModel)]
+struct ExampleDataSourceModel {
+    name: StringValue,
+    meow: StringValue,
+    id: StringValue,
+}
 
 impl DataSource for ExampleDataSource {
     fn name(&self, provider_name: &str) -> String {
@@ -66,7 +73,7 @@ impl DataSource for ExampleDataSource {
     }
 
     fn read(&self, config: Value) -> DResult<Value> {
-        let model = ExampleDataSourceModel::from_value(config, &AttrPath::root())?;
+        let mut model = ExampleDataSourceModel::from_value(config, &AttrPath::root())?;
 
         let StringValue::Known(name_str) = &model.name else {
             return Err(Diagnostics::error_string(
@@ -75,23 +82,9 @@ impl DataSource for ExampleDataSource {
         };
         let meow = format!("mrrrrr i am {name_str}");
 
-        Ok(Value::Known(ValueKind::Object(BTreeMap::from([
-            ("name".to_owned(), model.name.to_value()),
-            (
-                "meow".to_owned(),
-                Value::Known(ValueKind::String(meow)),
-            ),
-            (
-                "id".to_owned(),
-                Value::Known(ValueKind::String("0".to_owned())),
-            ),
-        ]))))
-    }
-}
+        model.meow = StringValue::Known(meow);
+        model.id = StringValue::Known("0".to_owned());
 
-#[derive(terustform::DataSourceModel)]
-struct ExampleDataSourceModel {
-    name: StringValue,
-    meow: StringValue,
-    id: StringValue,
+        Ok(model.to_value())
+    }
 }

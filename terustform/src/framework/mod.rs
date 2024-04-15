@@ -90,9 +90,7 @@ impl<T> BaseValue<T> {
 pub trait ValueModel: Sized {
     fn from_value(v: Value, path: &AttrPath) -> DResult<Self>;
 
-    fn to_value(self) -> Value {
-        todo!()
-    }
+    fn to_value(self) -> Value;
 }
 
 impl ValueModel for StringValue {

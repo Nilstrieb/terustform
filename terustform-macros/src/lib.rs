@@ -30,7 +30,7 @@ fn data_source_model_inner(
         ));
     };
 
-    let terustform = quote!(::terustform::__derive_private);
+    let tf = quote!(::terustform::__derive_private);
 
     let fields = fields
         .named
@@ -44,60 +44,73 @@ fn data_source_model_inner(
         })
         .collect::<Result<Vec<_>, _>>()?;
 
-
     let field_extractions = fields.iter().map(|(name, ty)| {
         let name_str = proc_macro2::Literal::string(&name.to_string());
         quote! {
-            let #terustform::Some(#name) = obj.remove(#name_str) else {
-                return #terustform::Err(
-                    #terustform::Diagnostics::error_string(
+            let #tf::Some(#name) = obj.remove(#name_str) else {
+                return #tf::Err(
+                    #tf::Diagnostics::error_string(
                         format!("Expected property '{}', which was not present", #name_str),
                     ).with_path(path.clone())
                 );
             };
-            let #name = <#ty as #terustform::ValueModel>::from_value(
+            let #name = <#ty as #tf::ValueModel>::from_value(
                 #name,
-                &path.append_attribute_name(#terustform::ToOwned::to_owned(#name_str))
+                &path.append_attribute_name(#tf::ToOwned::to_owned(#name_str))
             )?;
         }
     });
     let constructor_fields = fields.iter().map(|(name, _)| quote! { #name, });
 
+    let to_value_fields = fields.iter().map(|(name, ty)| {
+        let name_str = proc_macro2::Literal::string(&name.to_string());
+
+        quote! { (#name_str, <#ty as #tf::ValueModel>::to_value(self.#name)), }
+    });
+
     let (impl_generics, type_generics, where_clause) = input.generics.split_for_impl();
 
     Ok(quote! {
         #[automatically_derived]
-        impl #impl_generics #terustform::ValueModel
+        impl #impl_generics #tf::ValueModel
             for #struct_name #type_generics #where_clause
         {
-            fn from_value(v: #terustform::Value, path: &#terustform::AttrPath) -> #terustform::DResult<Self> {
+            fn from_value(v: #tf::Value, path: &#tf::AttrPath) -> #tf::DResult<Self> {
                 match v {
-                    #terustform::BaseValue::Unknown => {
-                        return #terustform::Err(#terustform::Diagnostics::with_path(
-                            #terustform::Diagnostics::error_string(#terustform::ToOwned::to_owned("Expected object, found unknown value")),
-                            #terustform::Clone::clone(&path),
+                    #tf::BaseValue::Unknown => {
+                        return #tf::Err(#tf::Diagnostics::with_path(
+                            #tf::Diagnostics::error_string(#tf::ToOwned::to_owned("Expected object, found unknown value")),
+                            #tf::Clone::clone(&path),
                         ));
                     },
-                    #terustform::BaseValue::Null => {
-                        return #terustform::Err(#terustform::Diagnostics::with_path(
-                            #terustform::Diagnostics::error_string(#terustform::ToOwned::to_owned("Expected object, found null value")),
-                            #terustform::Clone::clone(&path),
+                    #tf::BaseValue::Null => {
+                        return #tf::Err(#tf::Diagnostics::with_path(
+                            #tf::Diagnostics::error_string(#tf::ToOwned::to_owned("Expected object, found null value")),
+                            #tf::Clone::clone(&path),
                         ));
                     },
-                    #terustform::BaseValue::Known(#terustform::ValueKind::Object(mut obj)) => {
+                    #tf::BaseValue::Known(#tf::ValueKind::Object(mut obj)) => {
                         #(#field_extractions)*
 
                         Ok(#struct_name {
                             #(#constructor_fields)*
                         })
                     },
-                    #terustform::BaseValue::Known(v) => {
-                        return #terustform::Err(#terustform::Diagnostics::with_path(
-                            #terustform::Diagnostics::error_string(format!("Expected object, found {} value", v.diagnostic_type_str())),
-                            #terustform::Clone::clone(&path),
+                    #tf::BaseValue::Known(v) => {
+                        return #tf::Err(#tf::Diagnostics::with_path(
+                            #tf::Diagnostics::error_string(format!("Expected object, found {} value", v.diagnostic_type_str())),
+                            #tf::Clone::clone(&path),
                         ));
                     },
                 }
+            }
+
+            fn to_value(self) -> #tf::Value {
+                #tf::new_object(
+                    [
+                        #(#to_value_fields)*
+                    ]
+                )
             }
         }
     })

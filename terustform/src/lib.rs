@@ -108,5 +108,11 @@ pub mod __derive_private {
         AttrPath, AttrPathSegment, BaseValue, DResult, Diagnostics, ValueModel,
     };
     pub use crate::values::{Value, ValueKind};
-    pub use {Clone, Result::Err, Option::Some, ToOwned};
+    pub use {Clone, Option::Some, Result::Err, ToOwned};
+
+    pub fn new_object<const N: usize>(elems: [(&str, Value); N]) -> Value {
+        Value::Known(ValueKind::Object(std::collections::BTreeMap::from_iter(
+            elems.into_iter().map(|(k, v)| (k.to_owned(), v)),
+        )))
+    }
 }
