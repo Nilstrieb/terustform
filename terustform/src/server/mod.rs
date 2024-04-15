@@ -28,7 +28,7 @@ struct Schemas {
     diagnostics: Vec<tfplugin6::Diagnostic>,
 }
 
-pub async fn serve(provider: &dyn Provider) -> eyre::Result<()> {
+pub async fn serve<P: Provider>(provider: P) -> eyre::Result<()> {
     let client_cert =
         std::env::var("PLUGIN_CLIENT_CERT").wrap_err("PLUGIN_CLIENT_CERT not found")?;
     let client_cert = Certificate::from_pem(client_cert);
@@ -58,10 +58,9 @@ pub async fn serve(provider: &dyn Provider) -> eyre::Result<()> {
     let server = tonic::transport::Server::builder()
         .tls_config(tls)
         .wrap_err("invalid TLS config")?
-        .add_service(ProviderServer::new(handler::ProviderHandler::new(
-            shutdown.clone(),
-            provider,
-        )))
+        .add_service(ProviderServer::new(
+            handler::ProviderHandler::new(shutdown.clone(), provider),
+        ))
         .add_service(GrpcControllerServer::new(Controller {
             shutdown: shutdown.clone(),
         }))

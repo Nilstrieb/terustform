@@ -1,25 +1,39 @@
+mod client;
+
 use std::collections::HashMap;
 
 use terustform::{
     datasource::{self, DataSource},
-    provider::Provider,
+    provider::{MkDataSource, Provider},
     AttrPath, DResult, StringValue, Value, ValueModel,
 };
 
 #[tokio::main]
 async fn main() -> eyre::Result<()> {
-    terustform::start(&ExampleProvider {}).await
+    terustform::start(ExampleProvider {}).await
 }
 
 pub struct ExampleProvider {}
 
 impl Provider for ExampleProvider {
+    type Data = ();
     fn name(&self) -> String {
-        "example".to_owned()
+        "corsschool".to_owned()
     }
 
-    fn data_sources(&self) -> Vec<Box<dyn DataSource>> {
-        vec![ExampleDataSource {}.erase()]
+    fn schema(&self) -> datasource::Schema {
+        datasource::Schema {
+            description: "uwu".to_owned(),
+            attributes: HashMap::new(),
+        }
+    }
+
+    async fn configure(&self, _config: Value) -> DResult<Self::Data> {
+        Ok(())
+    }
+
+    fn data_sources(&self) -> Vec<MkDataSource<Self::Data>> {
+        vec![ExampleDataSource::erase()]
     }
 }
 
@@ -34,11 +48,13 @@ struct ExampleDataSourceModel {
 
 #[terustform::async_trait]
 impl DataSource for ExampleDataSource {
-    fn name(&self, provider_name: &str) -> String {
+    type ProviderData = ();
+
+    fn name(provider_name: &str) -> String {
         format!("{provider_name}_kitty")
     }
 
-    fn schema(&self) -> datasource::Schema {
+    fn schema() -> datasource::Schema {
         datasource::Schema {
             description: "an example".to_owned(),
             attributes: HashMap::from([
@@ -68,6 +84,10 @@ impl DataSource for ExampleDataSource {
                 ),
             ]),
         }
+    }
+
+    fn new(_data: Self::ProviderData) -> DResult<Self> {
+        Ok(ExampleDataSource {})
     }
 
     async fn read(&self, config: Value) -> DResult<Value> {

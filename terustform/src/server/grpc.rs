@@ -36,7 +36,7 @@ fn empty_schema() -> tfplugin6::Schema {
 }
 
 #[tonic::async_trait]
-impl Provider for super::ProviderHandler {
+impl<P: crate::provider::Provider> Provider for super::ProviderHandler<P> {
     /// GetMetadata returns upfront information about server capabilities and
     /// supported resource types without requiring the server to instantiate all
     /// schema information, which may be memory intensive. This RPC is optional,
@@ -61,7 +61,7 @@ impl Provider for super::ProviderHandler {
     ) -> Result<Response<tfplugin6::get_provider_schema::Response>, Status> {
         info!("Received get_provider_schema");
 
-        let schemas = self.get_schemas();
+        let schemas = self.get_schemas().await;
 
         let reply = tfplugin6::get_provider_schema::Response {
             provider: Some(empty_schema()),
@@ -144,9 +144,8 @@ impl Provider for super::ProviderHandler {
         request: Request<tfplugin6::configure_provider::Request>,
     ) -> Result<Response<tfplugin6::configure_provider::Response>, Status> {
         tracing::info!("configure_provider");
-        let reply = tfplugin6::configure_provider::Response {
-            diagnostics: vec![],
-        };
+        let diagnostics = self.do_configure_provider(&request.get_ref().config).await;
+        let reply = tfplugin6::configure_provider::Response { diagnostics };
         Ok(Response::new(reply))
     }
     /// ////// Managed Resource Lifecycle

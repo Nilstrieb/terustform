@@ -16,7 +16,7 @@ pub use eyre;
 use provider::Provider;
 use tracing::Level;
 
-pub async fn start(provider: &dyn Provider) -> eyre::Result<()> {
+pub async fn start<P: Provider>(provider: P) -> eyre::Result<()> {
     tracing_subscriber::fmt()
         .with_max_level(Level::DEBUG)
         .with_writer(std::io::stderr)

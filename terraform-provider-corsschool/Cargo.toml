@@ -5,7 +5,9 @@ edition = "2021"
 
 [dependencies]
 eyre = "0.6.12"
-reqwest = "0.12.3"
+reqwest = { version = "0.12.3", default-features = false, features = ["charset", "http2", "rustls-tls"]}
 terustform = { path = "../terustform" }
 
 tokio = { version = "1.37.0", features = ["full"] }
+
+dto = { git = "https://github.com/nilstrieb-lehre/davinci-cors.git", rev = "bef75a802cf48cf63d171136c2cea67b83055387" }

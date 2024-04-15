@@ -1,29 +1,44 @@
 use std::collections::HashMap;
 
-use crate::values::{Type, Value};
+use crate::{
+    provider::{MkDataSource, ProviderData},
+    values::{Type, Value},
+};
 
 use super::DResult;
 
 #[crate::async_trait]
-pub trait DataSource: Send + Sync {
-    fn name(&self, provider_name: &str) -> String;
-    fn schema(&self) -> Schema;
+pub trait DataSource: Send + Sync + 'static {
+    type ProviderData: ProviderData;
+
     // todo: probably want some kind of Value+Schema thing like tfsdk? whatever.
     async fn read(&self, config: Value) -> DResult<Value>;
 
-    fn erase(self) -> Box<dyn DataSource>
+    fn name(provider_name: &str) -> String
     where
-        Self: Sized + 'static,
+        Self: Sized;
+    fn schema() -> Schema
+    where
+        Self: Sized;
+    fn new(data: Self::ProviderData) -> DResult<Self>
+    where
+        Self: Sized;
+
+    fn erase() -> MkDataSource<Self::ProviderData>
+    where
+        Self: Sized,
     {
-        Box::new(self)
+        MkDataSource::create::<Self>()
     }
 }
 
+#[derive(Clone)]
 pub struct Schema {
     pub description: String,
     pub attributes: HashMap<String, Attribute>,
 }
 
+#[derive(Clone)]
 pub enum Attribute {
     String {
         description: String,

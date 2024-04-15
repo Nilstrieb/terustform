@@ -1,10 +1,10 @@
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct Diagnostics {
     pub(crate) diags: Vec<Diagnostic>,
     // note: lol this cannot contain warnings that would be fucked oops
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Diagnostic {
     pub(crate) msg: String,
     pub(crate) attr: Option<AttrPath>,
@@ -38,6 +38,9 @@ impl Diagnostic {
 }
 
 impl Diagnostics {
+    pub fn push(&mut self, d: Diagnostic) {
+        self.diags.push(d);
+    }
     pub fn has_errors(&self) -> bool {
         !self.diags.is_empty()
     }
