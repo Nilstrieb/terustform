@@ -49,9 +49,9 @@ fn data_source_model_inner(
         quote! {
             let #tf::Some(#name) = obj.remove(#name_str) else {
                 return #tf::Err(
-                    #tf::Diagnostics::error_string(
+                    #tf::Diagnostics::from(#tf::Diagnostic::error_string(
                         format!("Expected property '{}', which was not present", #name_str),
-                    ).with_path(path.clone())
+                    ).with_path(path.clone()))
                 );
             };
             let #name = <#ty as #tf::ValueModel>::from_value(
@@ -78,16 +78,16 @@ fn data_source_model_inner(
             fn from_value(v: #tf::Value, path: &#tf::AttrPath) -> #tf::DResult<Self> {
                 match v {
                     #tf::BaseValue::Unknown => {
-                        return #tf::Err(#tf::Diagnostics::with_path(
-                            #tf::Diagnostics::error_string(#tf::ToOwned::to_owned("Expected object, found unknown value")),
+                        return #tf::Err(#tf::Diagnostics::from(#tf::Diagnostic::with_path(
+                            #tf::Diagnostic::error_string(#tf::ToOwned::to_owned("Expected object, found unknown value")),
                             #tf::Clone::clone(&path),
-                        ));
+                        )));
                     },
                     #tf::BaseValue::Null => {
-                        return #tf::Err(#tf::Diagnostics::with_path(
-                            #tf::Diagnostics::error_string(#tf::ToOwned::to_owned("Expected object, found null value")),
+                        return #tf::Err(#tf::Diagnostics::from(#tf::Diagnostic::with_path(
+                            #tf::Diagnostic::error_string(#tf::ToOwned::to_owned("Expected object, found null value")),
                             #tf::Clone::clone(&path),
-                        ));
+                        )));
                     },
                     #tf::BaseValue::Known(#tf::ValueKind::Object(mut obj)) => {
                         #(#field_extractions)*
@@ -97,10 +97,10 @@ fn data_source_model_inner(
                         })
                     },
                     #tf::BaseValue::Known(v) => {
-                        return #tf::Err(#tf::Diagnostics::with_path(
-                            #tf::Diagnostics::error_string(format!("Expected object, found {} value", v.diagnostic_type_str())),
+                        return #tf::Err(#tf::Diagnostics::from(#tf::Diagnostic::with_path(
+                            #tf::Diagnostic::error_string(format!("Expected object, found {} value", v.diagnostic_type_str())),
                             #tf::Clone::clone(&path),
-                        ));
+                        )));
                     },
                 }
             }

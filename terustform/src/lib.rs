@@ -105,7 +105,7 @@ async fn init_handshake(server_cert: &rcgen::Certificate) -> Result<(tempfile::T
 #[doc(hidden)]
 pub mod __derive_private {
     pub use crate::framework::{
-        AttrPath, AttrPathSegment, BaseValue, DResult, Diagnostics, ValueModel,
+        AttrPath, AttrPathSegment, BaseValue, DResult, Diagnostic, Diagnostics, ValueModel,
     };
     pub use crate::values::{Value, ValueKind};
     pub use {Clone, Option::Some, Result::Err, ToOwned};

@@ -6,7 +6,7 @@ use std::{
     io::{self, Read},
 };
 
-use crate::framework::{BaseValue, DResult, Diagnostics};
+use crate::framework::{BaseValue, DResult, Diagnostic};
 
 #[derive(Debug)]
 pub enum Type {
@@ -250,16 +250,17 @@ impl Value {
                 let len = mp::read_map_len(rd)?;
 
                 if attrs.len() != (len as usize) {
-                    return Err(Diagnostics::error_string(format!(
+                    return Err(Diagnostic::error_string(format!(
                         "expected {} attrs, found {len} attrs in object",
                         attrs.len()
-                    )));
+                    ))
+                    .into());
                 }
                 let elems = (0..len)
                     .map(|_| -> DResult<_> {
                         let key = read_string(rd)?;
                         let typ = attrs.get(&key).ok_or_else(|| {
-                            Diagnostics::error_string(format!("unexpected attribute: '{key}'"))
+                            Diagnostic::error_string(format!("unexpected attribute: '{key}'"))
                         })?;
                         let value = Value::msg_unpack_inner(rd, &typ)?;
                         Ok((key, value))
@@ -270,10 +271,11 @@ impl Value {
             Type::Tuple { elems } => {
                 let len = mp::read_array_len(rd)?;
                 if elems.len() != (len as usize) {
-                    return Err(Diagnostics::error_string(format!(
+                    return Err(Diagnostic::error_string(format!(
                         "expected {} elems, found {len} elems in tuple",
                         elems.len()
-                    )));
+                    ))
+                    .into());
                 }
 
                 let elems = elems

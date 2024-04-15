@@ -9,41 +9,58 @@ use self::datasource::DataSource;
 
 #[derive(Debug, Default)]
 pub struct Diagnostics {
-    pub(crate) errors: Vec<String>,
-    pub(crate) attr: Option<AttrPath>,
+    pub(crate) diags: Vec<Diagnostic>,
     // note: lol this cannot contain warnings that would be fucked oops
+}
+
+#[derive(Debug)]
+pub struct Diagnostic {
+    pub(crate) msg: String,
+    pub(crate) attr: Option<AttrPath>,
 }
 
 pub type DResult<T> = Result<T, Diagnostics>;
 
-impl Diagnostics {
+impl Diagnostic {
     pub fn error_string(msg: impl Into<String>) -> Self {
-        Self {
-            errors: vec![msg.into()],
+        Diagnostic {
+            msg: msg.into(),
             attr: None,
         }
     }
-
     pub fn with_path(mut self, path: AttrPath) -> Self {
         self.attr = Some(path);
         self
     }
+}
 
+impl Diagnostics {
     pub fn has_errors(&self) -> bool {
-        !self.errors.is_empty()
+        !self.diags.is_empty()
     }
 }
 
-impl<E: std::error::Error + std::fmt::Debug> From<E> for Diagnostics {
+impl<E: std::error::Error + std::fmt::Debug> From<E> for Diagnostic {
     fn from(value: E) -> Self {
         Self::error_string(format!("{:?}", value))
+    }
+}
+impl<E: std::error::Error + std::fmt::Debug> From<E> for Diagnostics {
+    fn from(value: E) -> Self {
+        Diagnostic::from(value).into()
+    }
+}
+
+impl From<Diagnostic> for Diagnostics {
+    fn from(value: Diagnostic) -> Self {
+        Self { diags: vec![value] }
     }
 }
 
 // TODO: this could probably be a clever 0-alloc &-based linked list!
 
 #[derive(Debug, Clone, Default)]
-pub struct AttrPath(Vec<AttrPathSegment>);
+pub struct AttrPath(pub(crate) Vec<AttrPathSegment>);
 
 #[derive(Debug, Clone)]
 pub enum AttrPathSegment {
@@ -91,13 +108,14 @@ impl<T> BaseValue<T> {
 
     pub fn expect_known(&self, path: AttrPath) -> DResult<&T> {
         match self {
-            BaseValue::Null => {
-                Err(Diagnostics::error_string("expected value, found null value").with_path(path))
-            }
-            BaseValue::Unknown => Err(Diagnostics::error_string(
+            BaseValue::Null => Err(Diagnostic::error_string("expected value, found null value")
+                .with_path(path)
+                .into()),
+            BaseValue::Unknown => Err(Diagnostic::error_string(
                 "expected known value, found unknown value",
             )
-            .with_path(path)),
+            .with_path(path)
+            .into()),
             BaseValue::Known(v) => Ok(v),
         }
     }
@@ -111,13 +129,16 @@ pub trait ValueModel: Sized {
 
 impl ValueModel for StringValue {
     fn from_value(v: Value, path: &AttrPath) -> DResult<Self> {
-        v.try_map(|v| match v {
-            ValueKind::String(s) => Ok(s),
-            _ => Err(Diagnostics::error_string(format!(
-                "expected string, found {}",
-                v.diagnostic_type_str()
-            ))
-            .with_path(path.clone())),
+        v.try_map(|v| -> DResult<String> {
+            match v {
+                ValueKind::String(s) => Ok(s),
+                _ => Err(Diagnostic::error_string(format!(
+                    "expected string, found {}",
+                    v.diagnostic_type_str()
+                ))
+                .with_path(path.clone())
+                .into()),
+            }
         })
     }
 
