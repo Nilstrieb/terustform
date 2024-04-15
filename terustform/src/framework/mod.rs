@@ -17,9 +17,9 @@ pub struct Diagnostics {
 pub type DResult<T> = Result<T, Diagnostics>;
 
 impl Diagnostics {
-    pub fn error_string(msg: String) -> Self {
+    pub fn error_string(msg: impl Into<String>) -> Self {
         Self {
-            errors: vec![msg],
+            errors: vec![msg.into()],
             attr: None,
         }
     }
@@ -56,6 +56,9 @@ impl AttrPath {
     pub fn root() -> Self {
         Self::default()
     }
+    pub fn attr(name: impl Into<String>) -> Self {
+        Self(vec![AttrPathSegment::AttributeName(name.into())])
+    }
     pub fn append_attribute_name(&self, name: String) -> Self {
         let mut p = self.clone();
         p.0.push(AttrPathSegment::AttributeName(name));
@@ -84,6 +87,19 @@ impl<T> BaseValue<T> {
             Self::Null => BaseValue::Null,
             Self::Known(v) => BaseValue::Known(f(v)?),
         })
+    }
+
+    pub fn expect_known(&self, path: AttrPath) -> DResult<&T> {
+        match self {
+            BaseValue::Null => {
+                Err(Diagnostics::error_string("expected value, found null value").with_path(path))
+            }
+            BaseValue::Unknown => Err(Diagnostics::error_string(
+                "expected known value, found unknown value",
+            )
+            .with_path(path)),
+            BaseValue::Known(v) => Ok(v),
+        }
     }
 }
 

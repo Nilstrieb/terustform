@@ -4,7 +4,7 @@ use terustform::{
     framework::{
         datasource::{self, DataSource},
         provider::Provider,
-        AttrPath, DResult, Diagnostics, StringValue, ValueModel,
+        AttrPath, DResult, StringValue, ValueModel,
     },
     values::Value,
 };
@@ -75,11 +75,8 @@ impl DataSource for ExampleDataSource {
     fn read(&self, config: Value) -> DResult<Value> {
         let mut model = ExampleDataSourceModel::from_value(config, &AttrPath::root())?;
 
-        let StringValue::Known(name_str) = &model.name else {
-            return Err(Diagnostics::error_string(
-                "model name must be known".to_owned(),
-            ));
-        };
+        let name_str = model.name.expect_known(AttrPath::attr("name"))?;
+
         let meow = format!("mrrrrr i am {name_str}");
 
         model.meow = StringValue::Known(meow);
