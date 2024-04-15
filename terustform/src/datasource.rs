@@ -4,11 +4,12 @@ use crate::values::{Type, Value};
 
 use super::DResult;
 
+#[crate::async_trait]
 pub trait DataSource: Send + Sync {
     fn name(&self, provider_name: &str) -> String;
     fn schema(&self) -> Schema;
     // todo: probably want some kind of Value+Schema thing like tfsdk? whatever.
-    fn read(&self, config: Value) -> DResult<Value>;
+    async fn read(&self, config: Value) -> DResult<Value>;
 
     fn erase(self) -> Box<dyn DataSource>
     where

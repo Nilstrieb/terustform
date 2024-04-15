@@ -6,11 +6,14 @@ pub mod datasource;
 pub mod provider;
 
 pub use diag::*;
-pub use terustform_macros::Model;
 pub use values::*;
 
-use provider::Provider;
+pub use terustform_macros::Model;
 
+pub use async_trait::async_trait;
+pub use eyre;
+
+use provider::Provider;
 use tracing::Level;
 
 pub async fn start(provider: &dyn Provider) -> eyre::Result<()> {

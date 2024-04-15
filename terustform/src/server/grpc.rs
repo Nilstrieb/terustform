@@ -228,44 +228,9 @@ impl Provider for super::ProviderHandler {
         request: Request<tfplugin6::read_data_source::Request>,
     ) -> Result<Response<tfplugin6::read_data_source::Response>, Status> {
         tracing::info!("read_data_source");
+        let req = request.get_ref();
 
-        let ds = self
-            .state
-            .as_ref()
-            .unwrap()
-            .data_sources
-            .get(&request.get_ref().type_name)
-            .unwrap();
-
-        let typ = ds.schema().typ();
-        let config = match &request.get_ref().config {
-            None => crate::values::Value::Null,
-            Some(v) => {
-                let value = crate::values::Value::msg_unpack(&v.msgpack, &typ);
-                match value {
-                    Ok(value) => value,
-                    Err(errs) => {
-                        return Ok(Response::new(tfplugin6::read_data_source::Response {
-                            deferred: None,
-                            state: None,
-                            diagnostics: errs.to_tfplugin_diags(),
-                        }));
-                    }
-                }
-            }
-        };
-
-        let state = ds.read(config);
-        let (state, diagnostics) = match state {
-            Ok(s) => (
-                Some(tfplugin6::DynamicValue {
-                    msgpack: s.msg_pack(),
-                    json: vec![],
-                }),
-                vec![],
-            ),
-            Err(errs) => (None, errs.to_tfplugin_diags()),
-        };
+        let (state, diagnostics) = self.do_read_data_source(&req.type_name, &req.config).await;
 
         let reply = tfplugin6::read_data_source::Response {
             state,

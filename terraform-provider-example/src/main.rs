@@ -32,6 +32,7 @@ struct ExampleDataSourceModel {
     id: StringValue,
 }
 
+#[terustform::async_trait]
 impl DataSource for ExampleDataSource {
     fn name(&self, provider_name: &str) -> String {
         format!("{provider_name}_kitty")
@@ -69,7 +70,7 @@ impl DataSource for ExampleDataSource {
         }
     }
 
-    fn read(&self, config: Value) -> DResult<Value> {
+    async fn read(&self, config: Value) -> DResult<Value> {
         let mut model = ExampleDataSourceModel::from_value(config, &AttrPath::root())?;
 
         let name_str = model.name.expect_known(AttrPath::attr("name"))?;
