@@ -4,6 +4,8 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+terustform-macros = { path = "../terustform-macros" }
+
 base64 = "0.22.0"
 eyre = "0.6.12"
 prost = "0.12.4"

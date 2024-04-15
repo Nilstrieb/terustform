@@ -6,7 +6,7 @@ use std::{
     io::{self, Read},
 };
 
-use crate::framework::{DResult, Diagnostics};
+use crate::framework::{BaseValue, DResult, Diagnostics};
 
 #[derive(Debug)]
 pub enum Type {
@@ -79,12 +79,7 @@ impl Type {
     }
 }
 
-#[derive(Debug)]
-pub enum Value {
-    Known(ValueKind),
-    Unknown,
-    Null,
-}
+pub type Value = BaseValue<ValueKind>;
 
 #[derive(Debug)]
 pub enum ValueKind {
@@ -96,6 +91,21 @@ pub enum ValueKind {
     Map(BTreeMap<String, Value>),
     Tuple(Vec<Value>),
     Object(BTreeMap<String, Value>),
+}
+
+impl ValueKind {
+    pub fn diagnostic_type_str(&self) -> &'static str {
+        match self {
+            ValueKind::String(_) => "string",
+            ValueKind::Number(_) => "number",
+            ValueKind::Bool(_) => "bool",
+            ValueKind::List(_) => "list",
+            ValueKind::Set(_) => "set",
+            ValueKind::Map(_) => "map",
+            ValueKind::Tuple(_) => "tuple",
+            ValueKind::Object(_) => "object",
+        }
+    }
 }
 
 // marshal msg pack

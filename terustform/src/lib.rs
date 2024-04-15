@@ -3,6 +3,8 @@ pub mod framework;
 mod server;
 pub mod values;
 
+pub use terustform_macros::DataSourceModel;
+
 use std::{env, path::PathBuf};
 
 use base64::Engine;
@@ -48,16 +50,13 @@ pub async fn serve(provider: &dyn Provider) -> eyre::Result<()> {
     let server = tonic::transport::Server::builder()
         .tls_config(tls)
         .wrap_err("invalid TLS config")?
-        .add_service(server::ProviderServer::new(
-            server::ProviderHandler::new(shutdown.clone(), provider),
-        ))
-        .add_service(
-            server::GrpcControllerServer::new(
-                server::Controller {
-                    shutdown: shutdown.clone(),
-                },
-            ),
-        )
+        .add_service(server::ProviderServer::new(server::ProviderHandler::new(
+            shutdown.clone(),
+            provider,
+        )))
+        .add_service(server::GrpcControllerServer::new(server::Controller {
+            shutdown: shutdown.clone(),
+        }))
         .serve_with_incoming(uds_stream);
 
     tokio::select! {
@@ -100,4 +99,14 @@ async fn init_handshake(server_cert: &rcgen::Certificate) -> Result<(tempfile::T
     println!("{CORE_PROTOCOL_VERSION}|{PROTO_VERSION}|{listener_addr_network}|{listener_addr}|{proto_type}|{b64_cert}");
 
     Ok((tmpdir, socket))
+}
+
+/// Private, only for use for with the derive macro.
+#[doc(hidden)]
+pub mod __derive_private {
+    pub use crate::framework::{
+        AttrPath, AttrPathSegment, BaseValue, DResult, Diagnostics, ValueModel,
+    };
+    pub use crate::values::{Value, ValueKind};
+    pub use {Clone, Result::Err, Option::Some, ToOwned};
 }

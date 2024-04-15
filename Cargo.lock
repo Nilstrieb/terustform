@@ -1083,7 +1083,6 @@ version = "0.1.0"
 dependencies = [
  "eyre",
  "terustform",
- "terustform-macros",
  "tokio",
 ]
 
@@ -1100,6 +1099,7 @@ dependencies = [
  "serde",
  "serde_json",
  "tempfile",
+ "terustform-macros",
  "time",
  "tokio",
  "tokio-stream",

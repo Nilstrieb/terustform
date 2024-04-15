@@ -4,8 +4,7 @@ use terustform::{
     framework::{
         datasource::{self, DataSource},
         provider::Provider,
-        value::StringValue,
-        DResult,
+        AttrPath, DResult, Diagnostics, StringValue, ValueModel,
     },
     values::{Value, ValueKind},
 };
@@ -28,11 +27,6 @@ impl Provider for ExampleProvider {
 }
 
 struct ExampleDataSource {}
-
-#[derive(terustform_macros::DataSourceModel)]
-struct _ExampleDataSourceModel {
-    name: StringValue,
-}
 
 impl DataSource for ExampleDataSource {
     fn name(&self, provider_name: &str) -> String {
@@ -72,20 +66,20 @@ impl DataSource for ExampleDataSource {
     }
 
     fn read(&self, config: Value) -> DResult<Value> {
-        let name = match config {
-            Value::Known(ValueKind::Object(mut obj)) => obj.remove("name").unwrap(),
-            _ => unreachable!(),
+        let model = ExampleDataSourceModel::from_value(config, &AttrPath::root())?;
+
+        let StringValue::Known(name_str) = &model.name else {
+            return Err(Diagnostics::error_string(
+                "model name must be known".to_owned(),
+            ));
         };
-        let name_str = match &name {
-            Value::Known(ValueKind::String(s)) => s.clone(),
-            _ => unreachable!(),
-        };
+        let meow = format!("mrrrrr i am {name_str}");
 
         Ok(Value::Known(ValueKind::Object(BTreeMap::from([
-            ("name".to_owned(), name),
+            ("name".to_owned(), model.name.to_value()),
             (
                 "meow".to_owned(),
-                Value::Known(ValueKind::String(format!("mrrrrr i am {name_str}"))),
+                Value::Known(ValueKind::String(meow)),
             ),
             (
                 "id".to_owned(),
@@ -93,4 +87,11 @@ impl DataSource for ExampleDataSource {
             ),
         ]))))
     }
+}
+
+#[derive(terustform::DataSourceModel)]
+struct ExampleDataSourceModel {
+    name: StringValue,
+    meow: StringValue,
+    id: StringValue,
 }
