@@ -1,11 +1,4 @@
-#![allow(dead_code)]
-
-pub mod datasource;
-pub mod provider;
-
 use crate::values::{Value, ValueKind};
-
-use self::datasource::DataSource;
 
 #[derive(Debug, Default)]
 pub struct Diagnostics {

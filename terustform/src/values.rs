@@ -6,7 +6,7 @@ use std::{
     io::{self, Read},
 };
 
-use crate::framework::{BaseValue, DResult, Diagnostic};
+use crate::{BaseValue, DResult, Diagnostic};
 
 #[derive(Debug)]
 pub enum Type {

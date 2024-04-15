@@ -1,9 +1,7 @@
 use crate::{
-    framework::{
-        datasource::{self, Mode},
-        AttrPathSegment, Diagnostics,
-    },
+    datasource::{self, Mode},
     values::Type,
+    AttrPathSegment, Diagnostics,
 };
 
 use super::grpc::tfplugin6;

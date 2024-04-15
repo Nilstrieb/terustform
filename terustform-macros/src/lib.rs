@@ -3,7 +3,7 @@ use syn::spanned::Spanned;
 
 // This macro should only reference items in `terustform::__derive_private`.
 
-#[proc_macro_derive(DataSourceModel)]
+#[proc_macro_derive(Model)]
 pub fn data_source_model(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let input = syn::parse_macro_input!(input as syn::DeriveInput);
     match data_source_model_inner(input) {

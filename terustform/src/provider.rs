@@ -1,4 +1,4 @@
-use super::DataSource;
+use crate::datasource::DataSource;
 
 pub trait Provider: Send + Sync {
     fn name(&self) -> String;

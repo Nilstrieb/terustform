@@ -1,17 +1,15 @@
 use std::collections::HashMap;
 
 use terustform::{
-    framework::{
-        datasource::{self, DataSource},
-        provider::Provider,
-        AttrPath, DResult, StringValue, ValueModel,
-    },
+    datasource::{self, DataSource},
+    provider::Provider,
     values::Value,
+    AttrPath, DResult, StringValue, ValueModel,
 };
 
 #[tokio::main]
 async fn main() -> eyre::Result<()> {
-    terustform::serve(&ExampleProvider {}).await
+    terustform::start(&ExampleProvider {}).await
 }
 
 pub struct ExampleProvider {}
@@ -28,7 +26,7 @@ impl Provider for ExampleProvider {
 
 struct ExampleDataSource {}
 
-#[derive(terustform::DataSourceModel)]
+#[derive(terustform::Model)]
 struct ExampleDataSourceModel {
     name: StringValue,
     meow: StringValue,
