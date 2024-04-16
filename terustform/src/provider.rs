@@ -1,22 +1,19 @@
 use std::{future::Future, sync::Arc};
 
-use crate::{
-    datasource::{self, DataSource, Schema},
-    DResult, Value,
-};
+use crate::{datasource::DataSource, DResult, Schema, Value};
 
 pub trait ProviderData: Clone + Send + Sync + 'static {}
 impl<D: Clone + Send + Sync + 'static> ProviderData for D {}
 
 pub struct MkDataSource<D: ProviderData> {
     pub(crate) name: fn(&str) -> String,
-    pub(crate) schema: datasource::Schema,
+    pub(crate) schema: Schema,
     pub(crate) mk: fn(D) -> DResult<StoredDataSource<D>>,
 }
 
 pub(crate) struct StoredDataSource<D: ProviderData> {
     pub(crate) ds: Arc<dyn DataSource<ProviderData = D>>,
-    pub(crate) schema: datasource::Schema,
+    pub(crate) schema: Schema,
 }
 
 impl<D: ProviderData> Clone for StoredDataSource<D> {

@@ -1,11 +1,13 @@
 mod client;
+mod resources;
 
 use std::collections::HashMap;
 
+use eyre::Context;
 use terustform::{
-    datasource::{self, DataSource},
+    datasource::DataSource,
     provider::{MkDataSource, Provider},
-    AttrPath, DResult, StringValue, Value, ValueModel,
+    DResult, EyreExt, Schema, Value,
 };
 
 #[tokio::main]
@@ -16,90 +18,36 @@ async fn main() -> eyre::Result<()> {
 pub struct ExampleProvider {}
 
 impl Provider for ExampleProvider {
-    type Data = ();
+    type Data = client::CorsClient;
     fn name(&self) -> String {
         "corsschool".to_owned()
     }
 
-    fn schema(&self) -> datasource::Schema {
-        datasource::Schema {
+    fn schema(&self) -> Schema {
+        Schema {
             description: "uwu".to_owned(),
             attributes: HashMap::new(),
         }
     }
 
     async fn configure(&self, _config: Value) -> DResult<Self::Data> {
-        Ok(())
+        let username = std::env::var("CORSSCHOOL_USERNAME")
+            .wrap_err("CORSSCHOOL_USERNAME environment variable not set")
+            .eyre_to_tf()?;
+        let password = std::env::var("CORSSCHOOL_PASSWORD")
+            .wrap_err("CORSSCHOOL_PASSWORD environment variable not set")
+            .eyre_to_tf()?;
+        let client = client::CorsClient::new(username, password)
+            .await
+            .wrap_err("failed to create client")
+            .eyre_to_tf()?;
+        Ok(client)
     }
 
     fn data_sources(&self) -> Vec<MkDataSource<Self::Data>> {
-        vec![ExampleDataSource::erase()]
-    }
-}
-
-struct ExampleDataSource {}
-
-#[derive(terustform::Model)]
-struct ExampleDataSourceModel {
-    name: StringValue,
-    meow: StringValue,
-    id: StringValue,
-}
-
-#[terustform::async_trait]
-impl DataSource for ExampleDataSource {
-    type ProviderData = ();
-
-    fn name(provider_name: &str) -> String {
-        format!("{provider_name}_kitty")
-    }
-
-    fn schema() -> datasource::Schema {
-        datasource::Schema {
-            description: "an example".to_owned(),
-            attributes: HashMap::from([
-                (
-                    "name".to_owned(),
-                    datasource::Attribute::String {
-                        description: "a cool name".to_owned(),
-                        mode: datasource::Mode::Required,
-                        sensitive: false,
-                    },
-                ),
-                (
-                    "meow".to_owned(),
-                    datasource::Attribute::String {
-                        description: "the meow of the cat".to_owned(),
-                        mode: datasource::Mode::Computed,
-                        sensitive: false,
-                    },
-                ),
-                (
-                    "id".to_owned(),
-                    datasource::Attribute::String {
-                        description: "the ID of the meowy cat".to_owned(),
-                        mode: datasource::Mode::Computed,
-                        sensitive: false,
-                    },
-                ),
-            ]),
-        }
-    }
-
-    fn new(_data: Self::ProviderData) -> DResult<Self> {
-        Ok(ExampleDataSource {})
-    }
-
-    async fn read(&self, config: Value) -> DResult<Value> {
-        let mut model = ExampleDataSourceModel::from_value(config, &AttrPath::root())?;
-
-        let name_str = model.name.expect_known(AttrPath::attr("name"))?;
-
-        let meow = format!("mrrrrr i am {name_str}");
-
-        model.meow = StringValue::Known(meow);
-        model.id = StringValue::Known("0".to_owned());
-
-        Ok(model.to_value())
+        vec![
+            resources::kitty::ExampleDataSource::erase(),
+            resources::hugo::HugoDataSource::erase(),
+        ]
     }
 }

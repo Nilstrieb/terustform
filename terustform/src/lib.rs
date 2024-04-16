@@ -1,17 +1,27 @@
-mod diag;
+// Internal modules
 mod server;
+
+// Modules re-exported in the root
+mod diag;
+mod schema;
 mod values;
 
+// Public modules
 pub mod datasource;
 pub mod provider;
 
+// Re-exports
 pub use diag::*;
+pub use schema::*;
 pub use values::*;
 
 pub use terustform_macros::Model;
 
 pub use async_trait::async_trait;
 pub use eyre;
+
+// --------
+// Rest of the file.
 
 use provider::Provider;
 use tracing::Level;

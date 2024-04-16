@@ -22,3 +22,8 @@ output "cat1" {
 output "cat2" {
   value = data.corsschool_kitty.hellyes.meow
 }
+
+data "corsschool_hugo" "hugo" {}
+output "hugo" {
+  value = data.corsschool_hugo.hugo
+}

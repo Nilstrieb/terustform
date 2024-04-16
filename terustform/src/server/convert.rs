@@ -1,12 +1,8 @@
-use crate::{
-    datasource::{self, Mode},
-    values::Type,
-    AttrPathSegment, Diagnostics,
-};
+use crate::{values::Type, AttrPathSegment, Attribute, Diagnostics, Mode, Schema};
 
 use super::grpc::tfplugin6;
 
-impl datasource::Schema {
+impl Schema {
     pub(crate) fn to_tfplugin(self) -> tfplugin6::Schema {
         tfplugin6::Schema {
             version: 1,
@@ -26,7 +22,7 @@ impl datasource::Schema {
     }
 }
 
-impl datasource::Attribute {
+impl Attribute {
     pub(crate) fn to_tfplugin(self, name: String) -> tfplugin6::schema::Attribute {
         let mut attr = tfplugin6::schema::Attribute {
             name,
@@ -48,7 +44,7 @@ impl datasource::Attribute {
         };
 
         match self {
-            datasource::Attribute::String {
+            Attribute::String {
                 description,
                 mode,
                 sensitive,
@@ -58,7 +54,7 @@ impl datasource::Attribute {
                 set_modes(&mut attr, mode);
                 attr.sensitive = sensitive;
             }
-            datasource::Attribute::Int64 {
+            Attribute::Int64 {
                 description,
                 mode,
                 sensitive,
