@@ -146,6 +146,21 @@ impl<T> BaseValue<T> {
     }
 }
 
+impl<T> From<T> for BaseValue<T> {
+    fn from(value: T) -> Self {
+        Self::Known(value)
+    }
+}
+
+impl<T> From<Option<T>> for BaseValue<T> {
+    fn from(value: Option<T>) -> Self {
+        match value {
+            Some(value) => Self::Known(value),
+            None => Self::Null,
+        }
+    }
+}
+
 pub trait ValueModel: Sized {
     fn from_value(v: Value, path: &AttrPath) -> DResult<Self>;
 

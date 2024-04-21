@@ -48,6 +48,7 @@ impl Provider for ExampleProvider {
         vec![
             resources::kitty::ExampleDataSource::erase(),
             resources::hugo::HugoDataSource::erase(),
+            resources::class_data_source::ClassDataSource::erase(),
         ]
     }
 }

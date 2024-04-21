@@ -1,5 +1,8 @@
 use eyre::{Context, OptionExt, Result};
-use reqwest::header::{HeaderMap, HeaderValue};
+use reqwest::{
+    header::{HeaderMap, HeaderValue},
+    RequestBuilder, Response,
+};
 
 #[derive(Clone)]
 pub struct CorsClient {
@@ -29,7 +32,7 @@ impl CorsClient {
         let mut headers = HeaderMap::new();
         headers.insert(
             "Authorization",
-            HeaderValue::from_str(&format!("Bearer {}", token,)).unwrap(),
+            HeaderValue::from_str(token).unwrap(),
         );
         let client = reqwest::Client::builder()
             .default_headers(headers)
@@ -40,12 +43,27 @@ impl CorsClient {
     }
 
     pub async fn get_hugo(&self) -> Result<String> {
-        Ok(self
-            .client
-            .get(format!("{URL}/hugo"))
-            .send()
+        Ok(do_request(self.client.get(format!("{URL}/hugo")))
             .await?
             .text()
             .await?)
     }
+
+    pub async fn get_class(&self, id: &str) -> Result<dto::Class> {
+        Ok(do_request(self.client.get(format!("{URL}/classes/{id}")))
+            .await?
+            .json()
+            .await?)
+    }
+}
+
+async fn do_request(req: RequestBuilder) -> Result<Response> {
+    dbg!(&req);
+    let res = req.send().await?;
+    if let Err(err) = res.error_for_status_ref() {
+        let text = res.text().await.unwrap_or_default();
+        return Err(err).wrap_err(text);
+    }
+
+    Ok(res.error_for_status().wrap_err("failed to get class")?)
 }

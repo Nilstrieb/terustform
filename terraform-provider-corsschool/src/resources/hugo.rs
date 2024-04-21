@@ -35,17 +35,11 @@ impl DataSource for HugoDataSource {
         .to_value())
     }
 
-    fn name(provider_name: &str) -> String
-    where
-        Self: Sized,
-    {
+    fn name(provider_name: &str) -> String {
         format!("{provider_name}_hugo")
     }
 
-    fn schema() -> Schema
-    where
-        Self: Sized,
-    {
+    fn schema() -> Schema {
         Schema {
             description: "Get Hugo Boss".to_owned(),
             attributes: HashMap::from([(
@@ -59,10 +53,7 @@ impl DataSource for HugoDataSource {
         }
     }
 
-    fn new(data: Self::ProviderData) -> DResult<Self>
-    where
-        Self: Sized,
-    {
+    fn new(data: Self::ProviderData) -> DResult<Self> {
         Ok(Self { client: data })
     }
 }
