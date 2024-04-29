@@ -29,7 +29,7 @@ impl DataSource for ClassDataSource {
 
         let class = self
             .client
-            .get_class(&model.id.expect_known(AttrPath::attr("id"))?)
+            .get_class(model.id.expect_known(AttrPath::attr("id"))?)
             .await
             .wrap_err("failed to get class")
             .eyre_to_tf()?;

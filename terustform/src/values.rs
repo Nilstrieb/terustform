@@ -300,7 +300,7 @@ impl Value {
                 let len = mp::read_array_len(rd)?;
 
                 let elems = (0..len)
-                    .map(|_| Value::msg_unpack_inner(rd, &elem))
+                    .map(|_| Value::msg_unpack_inner(rd, elem))
                     .collect::<Result<Vec<_>, _>>()?;
                 ValueKind::List(elems)
             }
@@ -310,7 +310,7 @@ impl Value {
                 let elems = (0..len)
                     .map(|_| -> DResult<_> {
                         let key = read_string(rd)?;
-                        let value = Value::msg_unpack_inner(rd, &elem)?;
+                        let value = Value::msg_unpack_inner(rd, elem)?;
                         Ok((key, value))
                     })
                     .collect::<DResult<BTreeMap<_, _>>>()?;
@@ -320,7 +320,7 @@ impl Value {
                 let len = mp::read_array_len(rd)?;
 
                 let elems = (0..len)
-                    .map(|_| Value::msg_unpack_inner(rd, &elem))
+                    .map(|_| Value::msg_unpack_inner(rd, elem))
                     .collect::<Result<Vec<_>, _>>()?;
                 ValueKind::Set(elems)
             }
@@ -341,7 +341,7 @@ impl Value {
                         let typ = attrs.get(&key).ok_or_else(|| {
                             Diagnostic::error_string(format!("unexpected attribute: '{key}'"))
                         })?;
-                        let value = Value::msg_unpack_inner(rd, &typ)?;
+                        let value = Value::msg_unpack_inner(rd, typ)?;
                         Ok((key, value))
                     })
                     .collect::<DResult<BTreeMap<_, _>>>()?;
@@ -359,7 +359,7 @@ impl Value {
 
                 let elems = elems
                     .iter()
-                    .map(|typ| Value::msg_unpack_inner(rd, &typ))
+                    .map(|typ| Value::msg_unpack_inner(rd, typ))
                     .collect::<Result<Vec<_>, _>>()?;
                 ValueKind::Tuple(elems)
             }

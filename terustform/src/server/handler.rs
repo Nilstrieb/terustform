@@ -87,17 +87,17 @@ impl<P: Provider> ProviderHandler<P> {
                 mk_ds,
                 mk_rs,
             } => (provider, mk_ds, mk_rs),
-            ProviderState::Failed { diags } => return diags.clone().to_tfplugin_diags(),
+            ProviderState::Failed { diags } => return diags.clone().into_tfplugin_diags(),
             ProviderState::Configured { .. } => unreachable!("called configure twice"),
         };
         let config = match parse_dynamic_value(config, &provider.schema().typ()) {
             Ok(config) => config,
-            Err(errs) => return errs.to_tfplugin_diags(),
+            Err(errs) => return errs.into_tfplugin_diags(),
         };
 
         let data = match provider.configure(config).await {
             Ok(data) => data,
-            Err(errs) => return errs.to_tfplugin_diags(),
+            Err(errs) => return errs.into_tfplugin_diags(),
         };
         let mut diags = vec![];
 
@@ -109,7 +109,7 @@ impl<P: Provider> ProviderHandler<P> {
                 Ok(ds) => {
                     data_sources.insert(ds_name.clone(), ds);
                 }
-                Err(errs) => diags.extend(errs.to_tfplugin_diags()),
+                Err(errs) => diags.extend(errs.into_tfplugin_diags()),
             }
         }
 
@@ -121,7 +121,7 @@ impl<P: Provider> ProviderHandler<P> {
                 Ok(rs) => {
                     resources.insert(rs_name.clone(), rs);
                 }
-                Err(errs) => diags.extend(errs.to_tfplugin_diags()),
+                Err(errs) => diags.extend(errs.into_tfplugin_diags()),
             }
         }
 
@@ -146,7 +146,7 @@ impl<P: Provider> ProviderHandler<P> {
                 return Schemas {
                     resources: HashMap::new(),
                     data_sources: HashMap::new(),
-                    diagnostics: diags.clone().to_tfplugin_diags(),
+                    diagnostics: diags.clone().into_tfplugin_diags(),
                 }
             }
             ProviderState::Configured { .. } => {
@@ -157,14 +157,14 @@ impl<P: Provider> ProviderHandler<P> {
             .iter()
             .map(|(name, ds)| {
                 tracing::debug!(?name, "Initializing data source");
-                (name.to_owned(), ds.schema.clone().to_tfplugin())
+                (name.to_owned(), ds.schema.clone().into_tfplugin())
             })
             .collect::<HashMap<String, tfplugin6::Schema>>();
         let resources = mk_rs
             .iter()
             .map(|(name, ds)| {
                 tracing::debug!(?name, "Initializing resources");
-                (name.to_owned(), ds.schema.clone().to_tfplugin())
+                (name.to_owned(), ds.schema.clone().into_tfplugin())
             })
             .collect::<HashMap<String, tfplugin6::Schema>>();
 
@@ -187,7 +187,7 @@ impl<P: Provider> ProviderHandler<P> {
                     unreachable!("must be set up before calling data sources")
                 }
                 ProviderState::Failed { diags } => {
-                    return (None, diags.clone().to_tfplugin_diags())
+                    return (None, diags.clone().into_tfplugin_diags())
                 }
                 ProviderState::Configured {
                     data_sources,
@@ -201,7 +201,7 @@ impl<P: Provider> ProviderHandler<P> {
         let config = match parse_dynamic_value(config, &typ) {
             Ok(value) => value,
             Err(errs) => {
-                return (None, errs.to_tfplugin_diags());
+                return (None, errs.into_tfplugin_diags());
             }
         };
 
@@ -214,7 +214,7 @@ impl<P: Provider> ProviderHandler<P> {
                 }),
                 vec![],
             ),
-            Err(errs) => (None, errs.to_tfplugin_diags()),
+            Err(errs) => (None, errs.into_tfplugin_diags()),
         };
 
         (state, diagnostics)

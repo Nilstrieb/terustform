@@ -3,7 +3,7 @@ use crate::{values::Type, AttrPathSegment, Attribute, Diagnostics, Mode, Schema}
 use super::grpc::tfplugin6;
 
 impl Schema {
-    pub(crate) fn to_tfplugin(self) -> tfplugin6::Schema {
+    pub(crate) fn into_tfplugin(self) -> tfplugin6::Schema {
         tfplugin6::Schema {
             version: 1,
             block: Some(tfplugin6::schema::Block {
@@ -11,7 +11,7 @@ impl Schema {
                 attributes: self
                     .attributes
                     .into_iter()
-                    .map(|(name, attr)| attr.to_tfplugin(name))
+                    .map(|(name, attr)| attr.into_tfplugin(name))
                     .collect(),
                 block_types: vec![],
                 description: self.description,
@@ -23,7 +23,7 @@ impl Schema {
 }
 
 impl Attribute {
-    pub(crate) fn to_tfplugin(self, name: String) -> tfplugin6::schema::Attribute {
+    pub(crate) fn into_tfplugin(self, name: String) -> tfplugin6::schema::Attribute {
         let mut attr = tfplugin6::schema::Attribute {
             name,
             r#type: vec![],
@@ -71,7 +71,7 @@ impl Attribute {
 }
 
 impl Diagnostics {
-    pub(crate) fn to_tfplugin_diags(self) -> Vec<tfplugin6::Diagnostic> {
+    pub(crate) fn into_tfplugin_diags(self) -> Vec<tfplugin6::Diagnostic> {
         self.diags
             .into_iter()
             .map(|err| tfplugin6::Diagnostic {

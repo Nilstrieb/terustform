@@ -65,5 +65,5 @@ async fn do_request(req: RequestBuilder) -> Result<Response> {
         return Err(err).wrap_err(text);
     }
 
-    Ok(res.error_for_status().wrap_err("failed to get class")?)
+    res.error_for_status().wrap_err("failed to get class")
 }
