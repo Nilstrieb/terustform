@@ -19,3 +19,7 @@ data "corsschool_class" "test" {
 output "class" {
   value = data.corsschool_class.test
 }
+
+resource "corsschool_class" "myclass" {
+  name = "meow"
+}

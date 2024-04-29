@@ -26,8 +26,8 @@ enum ProviderState<P: Provider> {
         diags: Diagnostics,
     },
     Configured {
-        data_sources: HashMap<String, StoredDataSource<P::Data>>,
-        resources: HashMap<String, StoredResource<P::Data>>,
+        data_sources: HashMap<String, StoredDataSource>,
+        resources: HashMap<String, StoredResource>,
     },
 }
 
@@ -180,7 +180,7 @@ impl<P: Provider> ProviderHandler<P> {
         type_name: &str,
         config: &Option<tfplugin6::DynamicValue>,
     ) -> (Option<tfplugin6::DynamicValue>, Vec<tfplugin6::Diagnostic>) {
-        let ds: StoredDataSource<P::Data> = {
+        let ds: StoredDataSource = {
             let state = self.state.lock().await;
             match &*state {
                 ProviderState::Setup { .. } => {
@@ -205,7 +205,7 @@ impl<P: Provider> ProviderHandler<P> {
             }
         };
 
-        let state = (ds.read)(&*ds.object, config).await;
+        let state = ds.ds.read(config).await;
         let (state, diagnostics) = match state {
             Ok(s) => (
                 Some(tfplugin6::DynamicValue {

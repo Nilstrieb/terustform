@@ -4,7 +4,9 @@ mod resources;
 use std::collections::HashMap;
 
 use eyre::Context;
-use terustform::{datasource::DataSource, provider::Provider, DResult, EyreExt, Schema, Value};
+use terustform::{
+    datasource::DataSource, provider::Provider, resource::Resource, DResult, EyreExt, Schema, Value,
+};
 
 #[tokio::main]
 async fn main() -> eyre::Result<()> {
@@ -49,6 +51,6 @@ impl Provider for ExampleProvider {
     }
 
     fn resources(&self) -> terustform::provider::Resources<Self> {
-        vec![]
+        vec![resources::class_resource::ClassResource::erase()]
     }
 }

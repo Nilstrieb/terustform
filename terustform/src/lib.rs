@@ -18,7 +18,9 @@ pub use values::*;
 
 pub use terustform_macros::Model;
 
+pub use async_trait::async_trait;
 pub use eyre;
+use tracing_subscriber::EnvFilter;
 
 // --------
 // Rest of the file.
@@ -29,6 +31,9 @@ use tracing::Level;
 pub async fn start<P: Provider>(provider: P) -> eyre::Result<()> {
     tracing_subscriber::fmt()
         .with_max_level(Level::DEBUG)
+        .with_env_filter(EnvFilter::builder().parse_lossy(
+            std::env::var("RUST_LOG").unwrap_or_else(|_| "h2=info,rustls=info,debug".into()),
+        ))
         .with_writer(std::io::stderr)
         .without_time()
         .init();

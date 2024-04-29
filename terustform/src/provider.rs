@@ -1,6 +1,10 @@
-use std::{any::Any, future::Future, marker::PhantomData, pin::Pin, sync::Arc};
+use std::{future::Future, pin::Pin, sync::Arc};
 
-use crate::{datasource::DataSource, resource::Resource, DResult, Schema, Value};
+use crate::{
+    datasource::{DataSource, DynDataSource},
+    resource::{DynResource, Resource},
+    DResult, Schema, Value,
+};
 
 // This setup is a bit complicated.
 // In this explanation, substitute "`Resource`" for "`Resource` or `DataSource`".
@@ -14,29 +18,24 @@ use crate::{datasource::DataSource, resource::Resource, DResult, Schema, Value};
 pub trait ProviderData: Clone + Send + Sync + 'static {}
 impl<D: Clone + Send + Sync + 'static> ProviderData for D {}
 
+pub(super) type BoxFut<'a, O> = Pin<Box<dyn Future<Output = O> + Send + Sync + 'a>>;
+
 pub struct MkDataSource<D: ProviderData> {
     pub(crate) name: fn(&str) -> String,
     pub(crate) schema: Schema,
-    pub(crate) mk: fn(D) -> DResult<StoredDataSource<D>>,
+    pub(crate) mk: fn(D) -> DResult<StoredDataSource>,
 }
 
-pub(crate) struct StoredDataSource<D: ProviderData> {
-    pub(crate) object: Arc<dyn Any + Send + Sync>,
-    pub(crate) read: fn(
-        s: &(dyn Any + Send + Sync),
-        config: Value,
-    ) -> Pin<Box<dyn Future<Output = DResult<Value>> + Send + Sync + '_>>,
+pub(crate) struct StoredDataSource {
+    pub(crate) ds: Arc<dyn DynDataSource>,
     pub(crate) schema: Schema,
-    p: PhantomData<D>,
 }
 
-impl<D: ProviderData> Clone for StoredDataSource<D> {
+impl Clone for StoredDataSource {
     fn clone(&self) -> Self {
         Self {
-            object: self.object.clone(),
-            read: self.read,
+            ds: self.ds.clone(),
             schema: self.schema.clone(),
-            p: PhantomData,
         }
     }
 }
@@ -48,15 +47,8 @@ impl<D: ProviderData> MkDataSource<D> {
             schema: Ds::schema(),
             mk: |data| {
                 Ok(StoredDataSource {
-                    object: Arc::new(Ds::new(data)?),
-                    read: |s, config| {
-                        Box::pin(async {
-                            let ds = s.downcast_ref::<Ds>().unwrap();
-                            ds.read(config).await
-                        })
-                    },
+                    ds: Arc::new(Ds::new(data)?),
                     schema: Ds::schema(),
-                    p: PhantomData,
                 })
             },
         }
@@ -66,15 +58,15 @@ impl<D: ProviderData> MkDataSource<D> {
 pub struct MkResource<D: ProviderData> {
     pub(crate) name: fn(&str) -> String,
     pub(crate) schema: Schema,
-    pub(crate) mk: fn(D) -> DResult<StoredResource<D>>,
+    pub(crate) mk: fn(D) -> DResult<StoredResource>,
 }
 
-pub(crate) struct StoredResource<D: ProviderData> {
-    pub(crate) ds: Arc<dyn Resource<ProviderData = D>>,
+pub(crate) struct StoredResource {
+    pub(crate) ds: Arc<dyn DynResource>,
     pub(crate) schema: Schema,
 }
 
-impl<D: ProviderData> Clone for StoredResource<D> {
+impl Clone for StoredResource {
     fn clone(&self) -> Self {
         Self {
             ds: self.ds.clone(),
