@@ -6,7 +6,7 @@ use tracing::{debug, info};
 
 use crate::{
     provider::{MkDataSource, MkResource, Provider, StoredDataSource, StoredResource},
-    DResult, Diagnostic, Diagnostics, Type, Value,
+    Attribute, DResult, Diagnostic, Diagnostics, Type, Value, ValueKind,
 };
 
 use super::{grpc::tfplugin6, Schemas};
@@ -231,6 +231,70 @@ impl<P: Provider> ProviderHandler<P> {
         let new_state = tf_try!(rs.rs.read(current_state).await);
 
         (new_state.into_tfplugin(), TF_OK)
+    }
+
+    pub(super) async fn do_plan_resource_change(
+        &self,
+        type_name: &str,
+        prior_state: &Option<tfplugin6::DynamicValue>,
+        proposed_new_state: &Option<tfplugin6::DynamicValue>,
+        config: &Option<tfplugin6::DynamicValue>,
+    ) -> (Option<tfplugin6::DynamicValue>, Vec<tfplugin6::Diagnostic>) {
+        let rs: StoredResource = {
+            let state = self.state.lock().await;
+            match &*state {
+                ProviderState::Setup { .. } => {
+                    unreachable!("must be set up before calling data sources")
+                }
+                ProviderState::Failed { diags } => {
+                    return (None, diags.clone().into_tfplugin_diags())
+                }
+                ProviderState::Configured {
+                    data_sources: _,
+                    resources,
+                } => resources.get(type_name).unwrap().clone(),
+            }
+        };
+        let typ = rs.schema.typ();
+        let _prior_state = tf_try!(parse_dynamic_value(prior_state, &typ));
+        let proposed_new_state = tf_try!(parse_dynamic_value(proposed_new_state, &typ));
+        let _config = tf_try!(parse_dynamic_value(config, &typ));
+
+        // TODO: i cannot even start on how bad this is...
+        enum AttrSchema<'a> {
+            Nested(&'a HashMap<String, Attribute>),
+            Computed,
+            End,
+        }
+        fn transform(value: Value, schema: AttrSchema) -> Value {
+            match (value, schema) {
+                (Value::Null, AttrSchema::Computed) => Value::Unknown,
+                (Value::Known(ValueKind::Object(attrs)), AttrSchema::Nested(schema)) => {
+                    Value::Known(ValueKind::Object(
+                        attrs
+                            .into_iter()
+                            .map(|(name, attr)| {
+                                let schema = schema.get(&name).unwrap();
+                                let schema = if schema.mode().computed() {
+                                    AttrSchema::Computed
+                                } else {
+                                    AttrSchema::End
+                                };
+                                (name, transform(attr, schema))
+                            })
+                            .collect(),
+                    ))
+                }
+                (value, _) => value,
+            }
+        }
+
+        let planned_state = transform(
+            proposed_new_state,
+            AttrSchema::Nested(&rs.schema.attributes),
+        );
+
+        (planned_state.into_tfplugin(), TF_OK)
     }
 
     pub(super) async fn do_apply_resource_change(

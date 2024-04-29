@@ -2,7 +2,6 @@ use std::collections::HashMap;
 
 use crate::Type;
 
-
 #[derive(Clone)]
 pub struct Schema {
     pub description: String,
@@ -29,6 +28,15 @@ pub enum Mode {
     Optional,
     OptionalComputed,
     Computed,
+}
+
+impl Attribute {
+    pub fn mode(&self) -> Mode {
+        match *self {
+            Self::Int64 { mode, .. } => mode,
+            Self::String { mode, .. } => mode,
+        }
+    }
 }
 
 impl Mode {

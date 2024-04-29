@@ -22,6 +22,7 @@ pub use grpc::Controller;
 use self::grpc::tfplugin6;
 use self::handler::ProviderHandler;
 
+#[derive(Debug)]
 struct Schemas {
     resources: HashMap<String, tfplugin6::Schema>,
     data_sources: HashMap<String, tfplugin6::Schema>,

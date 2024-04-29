@@ -189,14 +189,24 @@ impl<P: crate::provider::Provider> Provider for super::ProviderHandler<P> {
         request: Request<tfplugin6::plan_resource_change::Request>,
     ) -> Result<Response<tfplugin6::plan_resource_change::Response>, Status> {
         tracing::info!(name=?request.get_ref().type_name, "plan_resource_change");
+        let req = request.get_ref();
 
         // We don't do anything interesting like requires_replace for now.
+        // We're supposed to handle defaults here.
 
+        let (planned_state, diagnostics) = self
+            .do_plan_resource_change(
+                &req.type_name,
+                &req.prior_state,
+                &req.proposed_new_state,
+                &req.config,
+            )
+            .await;
         let reply = tfplugin6::plan_resource_change::Response {
-            planned_state: request.into_inner().proposed_new_state,
+            planned_state,
             requires_replace: vec![],
             planned_private: vec![],
-            diagnostics: vec![],
+            diagnostics,
             legacy_type_system: false,
             deferred: None,
         };
