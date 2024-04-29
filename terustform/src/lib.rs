@@ -9,6 +9,7 @@ mod values;
 // Public modules
 pub mod datasource;
 pub mod provider;
+pub mod resource;
 
 // Re-exports
 pub use diag::*;

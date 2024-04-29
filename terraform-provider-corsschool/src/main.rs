@@ -4,11 +4,7 @@ mod resources;
 use std::collections::HashMap;
 
 use eyre::Context;
-use terustform::{
-    datasource::DataSource,
-    provider::{MkDataSource, Provider},
-    DResult, EyreExt, Schema, Value,
-};
+use terustform::{datasource::DataSource, provider::Provider, DResult, EyreExt, Schema, Value};
 
 #[tokio::main]
 async fn main() -> eyre::Result<()> {
@@ -44,11 +40,15 @@ impl Provider for ExampleProvider {
         Ok(client)
     }
 
-    fn data_sources(&self) -> Vec<MkDataSource<Self::Data>> {
+    fn data_sources(&self) -> terustform::provider::DataSources<Self> {
         vec![
             resources::kitty::ExampleDataSource::erase(),
             resources::hugo::HugoDataSource::erase(),
             resources::class_data_source::ClassDataSource::erase(),
         ]
+    }
+
+    fn resources(&self) -> terustform::provider::Resources<Self> {
+        vec![]
     }
 }

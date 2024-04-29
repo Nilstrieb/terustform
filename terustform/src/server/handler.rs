@@ -4,7 +4,7 @@ use tokio::sync::Mutex;
 use tokio_util::sync::CancellationToken;
 
 use crate::{
-    provider::{MkDataSource, Provider, StoredDataSource},
+    provider::{MkDataSource, MkResource, Provider, StoredDataSource, StoredResource},
     DResult, Diagnostic, Diagnostics, Type, Value,
 };
 
@@ -20,12 +20,14 @@ enum ProviderState<P: Provider> {
     Setup {
         provider: P,
         mk_ds: HashMap<String, MkDataSource<P::Data>>,
+        mk_rs: HashMap<String, MkResource<P::Data>>,
     },
     Failed {
         diags: Diagnostics,
     },
     Configured {
         data_sources: HashMap<String, StoredDataSource<P::Data>>,
+        resources: HashMap<String, StoredResource<P::Data>>,
     },
 }
 
@@ -34,11 +36,10 @@ impl<P: Provider> ProviderHandler<P> {
     /// This function is infallible, as it is not called during a time where reporting errors nicely is possible.
     /// If there's an error, we just taint our internal state and report errors in `GetProviderSchema`.
     pub fn new(shutdown: CancellationToken, provider: P) -> Self {
-        let mut mk_ds = HashMap::new();
-
         let mut errors = Diagnostics::default();
         let name = provider.name();
 
+        let mut mk_ds = HashMap::new();
         for ds in provider.data_sources() {
             let ds_name = (ds.name)(&name);
             let entry = mk_ds.insert(ds_name.clone(), ds);
@@ -49,10 +50,25 @@ impl<P: Provider> ProviderHandler<P> {
             }
         }
 
+        let mut mk_rs = HashMap::new();
+        for rs in provider.resources() {
+            let rs_name = (rs.name)(&name);
+            let entry = mk_rs.insert(rs_name.clone(), rs);
+            if entry.is_some() {
+                errors.push(Diagnostic::error_string(format!(
+                    "data source {rs_name} exists more than once"
+                )));
+            }
+        }
+
         let state = if errors.has_errors() {
             ProviderState::Failed { diags: errors }
         } else {
-            ProviderState::Setup { provider, mk_ds }
+            ProviderState::Setup {
+                provider,
+                mk_ds,
+                mk_rs,
+            }
         };
         Self {
             shutdown,
@@ -65,8 +81,12 @@ impl<P: Provider> ProviderHandler<P> {
         config: &Option<tfplugin6::DynamicValue>,
     ) -> Vec<tfplugin6::Diagnostic> {
         let mut state = self.state.lock().await;
-        let (provider, mk_ds) = match &*state {
-            ProviderState::Setup { provider, mk_ds } => (provider, mk_ds),
+        let (provider, mk_ds, mk_rs) = match &*state {
+            ProviderState::Setup {
+                provider,
+                mk_ds,
+                mk_rs,
+            } => (provider, mk_ds, mk_rs),
             ProviderState::Failed { diags } => return diags.clone().to_tfplugin_diags(),
             ProviderState::Configured { .. } => unreachable!("called configure twice"),
         };
@@ -79,10 +99,9 @@ impl<P: Provider> ProviderHandler<P> {
             Ok(data) => data,
             Err(errs) => return errs.to_tfplugin_diags(),
         };
-
-        let mut data_sources = HashMap::new();
         let mut diags = vec![];
 
+        let mut data_sources = HashMap::new();
         for (ds_name, ds) in mk_ds {
             let ds = (ds.mk)(data.clone());
 
@@ -94,16 +113,35 @@ impl<P: Provider> ProviderHandler<P> {
             }
         }
 
-        *state = ProviderState::Configured { data_sources };
+        let mut resources = HashMap::new();
+        for (rs_name, rs) in mk_rs {
+            let rs = (rs.mk)(data.clone());
+
+            match rs {
+                Ok(rs) => {
+                    resources.insert(rs_name.clone(), rs);
+                }
+                Err(errs) => diags.extend(errs.to_tfplugin_diags()),
+            }
+        }
+
+        *state = ProviderState::Configured {
+            data_sources,
+            resources,
+        };
 
         diags
     }
 
     pub(super) async fn get_schemas(&self) -> Schemas {
         let state = self.state.lock().await;
-        let resources = HashMap::new();
-        let mk_ds = match &*state {
-            ProviderState::Setup { mk_ds, provider: _ } => mk_ds,
+
+        let (mk_ds, mk_rs) = match &*state {
+            ProviderState::Setup {
+                mk_ds,
+                mk_rs,
+                provider: _,
+            } => (mk_ds, mk_rs),
             ProviderState::Failed { diags } => {
                 return Schemas {
                     resources: HashMap::new(),
@@ -119,6 +157,13 @@ impl<P: Provider> ProviderHandler<P> {
             .iter()
             .map(|(name, ds)| {
                 tracing::debug!(?name, "Initializing data source");
+                (name.to_owned(), ds.schema.clone().to_tfplugin())
+            })
+            .collect::<HashMap<String, tfplugin6::Schema>>();
+        let resources = mk_rs
+            .iter()
+            .map(|(name, ds)| {
+                tracing::debug!(?name, "Initializing resources");
                 (name.to_owned(), ds.schema.clone().to_tfplugin())
             })
             .collect::<HashMap<String, tfplugin6::Schema>>();
@@ -144,9 +189,10 @@ impl<P: Provider> ProviderHandler<P> {
                 ProviderState::Failed { diags } => {
                     return (None, diags.clone().to_tfplugin_diags())
                 }
-                ProviderState::Configured { data_sources } => {
-                    data_sources.get(type_name).unwrap().clone()
-                }
+                ProviderState::Configured {
+                    data_sources,
+                    resources: _,
+                } => data_sources.get(type_name).unwrap().clone(),
             }
         };
 
