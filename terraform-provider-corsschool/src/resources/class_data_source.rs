@@ -13,18 +13,18 @@ pub struct ClassDataSource {
 }
 
 #[derive(terustform::Model)]
-struct ClassDataSourceModel {
-    id: StringValue,
-    name: StringValue,
-    description: StringValue,
-    discord_id: StringValue,
+pub(super) struct ClassModel {
+    pub(super) id: StringValue,
+    pub(super) name: StringValue,
+    pub(super) description: StringValue,
+    pub(super) discord_id: StringValue,
 }
 
 impl DataSource for ClassDataSource {
     type ProviderData = CorsClient;
 
     async fn read(&self, config: Value) -> DResult<Value> {
-        let mut model = ClassDataSourceModel::from_value(config, &AttrPath::root())?;
+        let model = ClassModel::from_value(config, &AttrPath::root())?;
 
         let class = self
             .client
@@ -33,11 +33,13 @@ impl DataSource for ClassDataSource {
             .wrap_err("failed to get class")
             .eyre_to_tf()?;
 
-        model.name = StringValue::Known(class.name);
-        model.description = StringValue::Known(class.description);
-        model.discord_id = StringValue::from(class.discord_id);
-
-        Ok(model.to_value())
+        Ok(ClassModel {
+            id: model.id,
+            name: class.name.into(),
+            description: class.description.into(),
+            discord_id: class.discord_id.into(),
+        }
+        .to_value())
     }
 
     fn name(provider_name: &str) -> String {

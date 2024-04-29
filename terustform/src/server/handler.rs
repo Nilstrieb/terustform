@@ -2,6 +2,7 @@ use std::collections::HashMap;
 
 use tokio::sync::Mutex;
 use tokio_util::sync::CancellationToken;
+use tracing::{debug, info};
 
 use crate::{
     provider::{MkDataSource, MkResource, Provider, StoredDataSource, StoredResource},
@@ -30,6 +31,8 @@ enum ProviderState<P: Provider> {
         resources: HashMap<String, StoredResource>,
     },
 }
+
+const TF_OK: Vec<tfplugin6::Diagnostic> = vec![];
 
 impl<P: Provider> ProviderHandler<P> {
     /// Creates a new `ProviderHandler`.
@@ -79,7 +82,7 @@ impl<P: Provider> ProviderHandler<P> {
     pub(super) async fn do_configure_provider(
         &self,
         config: &Option<tfplugin6::DynamicValue>,
-    ) -> Vec<tfplugin6::Diagnostic> {
+    ) -> (Option<()>, Vec<tfplugin6::Diagnostic>) {
         let mut state = self.state.lock().await;
         let (provider, mk_ds, mk_rs) = match &*state {
             ProviderState::Setup {
@@ -87,18 +90,12 @@ impl<P: Provider> ProviderHandler<P> {
                 mk_ds,
                 mk_rs,
             } => (provider, mk_ds, mk_rs),
-            ProviderState::Failed { diags } => return diags.clone().into_tfplugin_diags(),
+            ProviderState::Failed { diags } => return (None, diags.clone().into_tfplugin_diags()),
             ProviderState::Configured { .. } => unreachable!("called configure twice"),
         };
-        let config = match parse_dynamic_value(config, &provider.schema().typ()) {
-            Ok(config) => config,
-            Err(errs) => return errs.into_tfplugin_diags(),
-        };
+        let config = tf_try!(parse_dynamic_value(config, &provider.schema().typ()));
 
-        let data = match provider.configure(config).await {
-            Ok(data) => data,
-            Err(errs) => return errs.into_tfplugin_diags(),
-        };
+        let data = tf_try!(provider.configure(config).await);
         let mut diags = vec![];
 
         let mut data_sources = HashMap::new();
@@ -130,10 +127,10 @@ impl<P: Provider> ProviderHandler<P> {
             resources,
         };
 
-        diags
+        (Some(()), diags)
     }
 
-    pub(super) async fn get_schemas(&self) -> Schemas {
+    pub(super) async fn do_get_provider_schema(&self) -> Schemas {
         let state = self.state.lock().await;
 
         let (mk_ds, mk_rs) = match &*state {
@@ -171,7 +168,7 @@ impl<P: Provider> ProviderHandler<P> {
         Schemas {
             resources,
             data_sources,
-            diagnostics: vec![],
+            diagnostics: TF_OK,
         }
     }
 
@@ -197,29 +194,106 @@ impl<P: Provider> ProviderHandler<P> {
         };
 
         let typ = ds.schema.typ();
+        let config = tf_try!(parse_dynamic_value(config, &typ));
+        let state = tf_try!(ds.ds.read(config).await);
 
-        let config = match parse_dynamic_value(config, &typ) {
+        (state.into_tfplugin(), TF_OK)
+    }
+
+    pub(super) async fn do_read_resource(
+        &self,
+        type_name: &str,
+        current_state: &Option<tfplugin6::DynamicValue>,
+    ) -> (Option<tfplugin6::DynamicValue>, Vec<tfplugin6::Diagnostic>) {
+        let rs: StoredResource = {
+            let state = self.state.lock().await;
+            match &*state {
+                ProviderState::Setup { .. } => {
+                    unreachable!("must be set up before calling data sources")
+                }
+                ProviderState::Failed { diags } => {
+                    return (None, diags.clone().into_tfplugin_diags())
+                }
+                ProviderState::Configured {
+                    data_sources: _,
+                    resources,
+                } => resources.get(type_name).unwrap().clone(),
+            }
+        };
+
+        let typ = rs.schema.typ();
+        let current_state = tf_try!(parse_dynamic_value(current_state, &typ));
+        if current_state.is_null() {
+            info!("reading from null state, skipping");
+            return (None, TF_OK);
+        }
+
+        let new_state = tf_try!(rs.rs.read(current_state).await);
+
+        (new_state.into_tfplugin(), TF_OK)
+    }
+
+    pub(super) async fn do_apply_resource_change(
+        &self,
+        type_name: &str,
+        prior_state: &Option<tfplugin6::DynamicValue>,
+        planned_state: &Option<tfplugin6::DynamicValue>,
+        config: &Option<tfplugin6::DynamicValue>,
+    ) -> (Option<tfplugin6::DynamicValue>, Vec<tfplugin6::Diagnostic>) {
+        let rs: StoredResource = {
+            let state = self.state.lock().await;
+            match &*state {
+                ProviderState::Setup { .. } => {
+                    unreachable!("must be set up before calling data sources")
+                }
+                ProviderState::Failed { diags } => {
+                    return (None, diags.clone().into_tfplugin_diags())
+                }
+                ProviderState::Configured {
+                    data_sources: _,
+                    resources,
+                } => resources.get(type_name).unwrap().clone(),
+            }
+        };
+        let typ = rs.schema.typ();
+        let prior_state = tf_try!(parse_dynamic_value(prior_state, &typ));
+        let planned_state = tf_try!(parse_dynamic_value(planned_state, &typ));
+        let config = tf_try!(parse_dynamic_value(config, &typ));
+
+        debug!(
+            ?prior_state,
+            ?planned_state,
+            ?config,
+            "Applying resource change"
+        );
+
+        let new_state = if prior_state.is_null() {
+            debug!("Change is create");
+            tf_try!(rs.rs.create(config, planned_state).await)
+        } else if planned_state.is_null() {
+            debug!("Change is delete");
+            tf_try!(rs.rs.delete(config).await);
+            Value::Null
+        } else {
+            debug!("Change is udpate");
+            tf_try!(rs.rs.update(config, planned_state, prior_state).await)
+        };
+
+        (new_state.into_tfplugin(), TF_OK)
+    }
+}
+
+macro_rules! tf_try {
+    ($e:expr) => {
+        match $e {
             Ok(value) => value,
             Err(errs) => {
                 return (None, errs.into_tfplugin_diags());
             }
-        };
-
-        let state = ds.ds.read(config).await;
-        let (state, diagnostics) = match state {
-            Ok(s) => (
-                Some(tfplugin6::DynamicValue {
-                    msgpack: s.msg_pack(),
-                    json: vec![],
-                }),
-                vec![],
-            ),
-            Err(errs) => (None, errs.into_tfplugin_diags()),
-        };
-
-        (state, diagnostics)
-    }
+        }
+    };
 }
+use tf_try;
 
 fn parse_dynamic_value(value: &Option<tfplugin6::DynamicValue>, typ: &Type) -> DResult<Value> {
     match value {

@@ -11,3 +11,4 @@ terustform = { path = "../terustform" }
 tokio = { version = "1.37.0", features = ["full"] }
 
 dto = { git = "https://github.com/nilstrieb-lehre/davinci-cors.git", rev = "bef75a802cf48cf63d171136c2cea67b83055387" }
+serde = "1.0.199"

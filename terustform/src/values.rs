@@ -119,6 +119,10 @@ pub enum BaseValue<T> {
 }
 
 impl<T> BaseValue<T> {
+    pub fn is_null(&self) -> bool {
+        matches!(self, Self::Null)
+    }
+
     fn map<U>(self, f: impl FnOnce(T) -> U) -> BaseValue<U> {
         self.try_map(|v| Ok(f(v))).unwrap()
     }
@@ -144,6 +148,18 @@ impl<T> BaseValue<T> {
             BaseValue::Known(v) => Ok(v),
         }
     }
+
+    pub fn expect_known_or_null(&self, path: AttrPath) -> DResult<Option<&T>> {
+        match self {
+            BaseValue::Null => Ok(None),
+            BaseValue::Unknown => Err(Diagnostic::error_string(
+                "expected known value, found unknown value",
+            )
+            .with_path(path)
+            .into()),
+            BaseValue::Known(v) => Ok(Some(v)),
+        }
+    }
 }
 
 impl<T> From<T> for BaseValue<T> {
@@ -165,6 +181,10 @@ pub trait ValueModel: Sized {
     fn from_value(v: Value, path: &AttrPath) -> DResult<Self>;
 
     fn to_value(self) -> Value;
+
+    fn from_root_value(v: Value) -> DResult<Self> {
+        Self::from_value(v, &AttrPath::root())
+    }
 }
 
 impl ValueModel for StringValue {

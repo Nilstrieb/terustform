@@ -22,4 +22,5 @@ output "class" {
 
 resource "corsschool_class" "myclass" {
   name = "meow"
+  description = "???"
 }

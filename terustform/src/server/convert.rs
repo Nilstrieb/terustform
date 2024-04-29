@@ -1,4 +1,4 @@
-use crate::{values::Type, AttrPathSegment, Attribute, Diagnostics, Mode, Schema};
+use crate::{values::Type, AttrPathSegment, Attribute, Diagnostics, Mode, Schema, Value};
 
 use super::grpc::tfplugin6;
 
@@ -105,5 +105,14 @@ impl Diagnostics {
                 }),
             })
             .collect()
+    }
+}
+
+impl Value {
+    pub(crate) fn into_tfplugin(self) -> Option<tfplugin6::DynamicValue> {
+        Some(tfplugin6::DynamicValue {
+            msgpack: self.msg_pack(),
+            json: vec![],
+        })
     }
 }

@@ -62,14 +62,14 @@ pub struct MkResource<D: ProviderData> {
 }
 
 pub(crate) struct StoredResource {
-    pub(crate) ds: Arc<dyn DynResource>,
+    pub(crate) rs: Arc<dyn DynResource>,
     pub(crate) schema: Schema,
 }
 
 impl Clone for StoredResource {
     fn clone(&self) -> Self {
         Self {
-            ds: self.ds.clone(),
+            rs: self.rs.clone(),
             schema: self.schema.clone(),
         }
     }
@@ -82,7 +82,7 @@ impl<D: ProviderData> MkResource<D> {
             schema: Rs::schema(),
             mk: |data| {
                 Ok(StoredResource {
-                    ds: Arc::new(Rs::new(data)?),
+                    rs: Arc::new(Rs::new(data)?),
                     schema: Rs::schema(),
                 })
             },

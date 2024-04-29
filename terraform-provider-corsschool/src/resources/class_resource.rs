@@ -1,8 +1,12 @@
 use std::collections::HashMap;
 
-use terustform::{resource::Resource, Attribute, DResult, Mode, Schema, Value};
+use terustform::{
+    resource::Resource, AttrPath, Attribute, DResult, EyreExt, Mode, Schema, Value, ValueModel,
+};
 
 use crate::client::CorsClient;
+
+use super::class_data_source::ClassModel;
 
 pub struct ClassResource {
     client: CorsClient,
@@ -11,19 +15,59 @@ pub struct ClassResource {
 impl Resource for ClassResource {
     type ProviderData = CorsClient;
 
-    async fn read(&self, config: Value) -> DResult<Value> {
+    async fn read(&self, current_state: Value) -> DResult<Value> {
+        let model = ClassModel::from_value(current_state, &AttrPath::root())?;
+
+        let class = self
+            .client
+            .get_class(model.id.expect_known(AttrPath::attr("id"))?)
+            .await
+            .eyre_to_tf()?;
+
+        Ok(ClassModel {
+            id: model.id,
+            name: class.name.into(),
+            description: class.description.into(),
+            discord_id: class.discord_id.into(),
+        }
+        .to_value())
+    }
+
+    async fn create(&self, _config: Value, plan: Value) -> DResult<Value> {
+        let model = ClassModel::from_root_value(plan)?;
+
+        let class = self
+            .client
+            .post_class(&dto::Class {
+                id: Default::default(),
+                members: vec![],
+                name: model.name.expect_known(AttrPath::attr("name"))?.clone(),
+                description: model
+                    .description
+                    .expect_known(AttrPath::attr("description"))?
+                    .clone(),
+                discord_id: model
+                    .discord_id
+                    .expect_known_or_null(AttrPath::attr("discord_id"))?
+                    .cloned(),
+            })
+            .await
+            .eyre_to_tf()?;
+
+        Ok(ClassModel {
+            id: class.id.to_string().into(),
+            name: class.name.into(),
+            description: class.description.into(),
+            discord_id: class.discord_id.into(),
+        }
+        .to_value())
+    }
+
+    async fn update(&self, _config: Value, _plan: Value, _state: Value) -> DResult<Value> {
         todo!()
     }
 
-    async fn create(&self, config: Value) -> DResult<Value> {
-        todo!()
-    }
-
-    async fn update(&self, config: Value) -> DResult<Value> {
-        todo!()
-    }
-
-    async fn delete(&self, state: Value) -> DResult<Value> {
+    async fn delete(&self, _state: Value) -> DResult<Value> {
         todo!()
     }
 
@@ -56,7 +100,7 @@ impl Resource for ClassResource {
                     "description".to_owned(),
                     Attribute::String {
                         description: "The description".to_owned(),
-                        mode: Mode::Optional,
+                        mode: Mode::Required,
                         sensitive: false,
                     },
                 ),
