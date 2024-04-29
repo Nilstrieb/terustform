@@ -18,7 +18,6 @@ pub use values::*;
 
 pub use terustform_macros::Model;
 
-pub use async_trait::async_trait;
 pub use eyre;
 
 // --------

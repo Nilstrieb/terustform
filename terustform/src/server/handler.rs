@@ -205,7 +205,7 @@ impl<P: Provider> ProviderHandler<P> {
             }
         };
 
-        let state = ds.ds.read(config).await;
+        let state = (ds.read)(&*ds.object, config).await;
         let (state, diagnostics) = match state {
             Ok(s) => (
                 Some(tfplugin6::DynamicValue {

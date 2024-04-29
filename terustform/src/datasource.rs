@@ -1,3 +1,5 @@
+use std::future::Future;
+
 use crate::{
     provider::{MkDataSource, ProviderData},
     values::Value,
@@ -6,12 +8,11 @@ use crate::{
 
 use super::DResult;
 
-#[crate::async_trait]
 pub trait DataSource: Send + Sync + 'static {
     type ProviderData: ProviderData;
 
     // todo: probably want some kind of Value+Schema thing like tfsdk? whatever.
-    async fn read(&self, config: Value) -> DResult<Value>;
+    fn read(&self, config: Value) -> impl Future<Output = DResult<Value>> + Send + Sync;
 
     fn name(provider_name: &str) -> String
     where

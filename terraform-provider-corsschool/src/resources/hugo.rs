@@ -17,7 +17,6 @@ struct HugoDataSourceModel {
     hugo: StringValue,
 }
 
-#[terustform::async_trait]
 impl DataSource for HugoDataSource {
     type ProviderData = CorsClient;
 

@@ -16,7 +16,6 @@ struct ExampleDataSourceModel {
     id: StringValue,
 }
 
-#[terustform::async_trait]
 impl DataSource for ExampleDataSource {
     type ProviderData = CorsClient;
 

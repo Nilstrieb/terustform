@@ -20,7 +20,6 @@ struct ClassDataSourceModel {
     discord_id: StringValue,
 }
 
-#[terustform::async_trait]
 impl DataSource for ClassDataSource {
     type ProviderData = CorsClient;
 
