@@ -81,7 +81,7 @@ impl Type {
 
 pub type Value = BaseValue<ValueKind>;
 
-#[derive(Debug)]
+#[derive(PartialEq, Debug)]
 pub enum ValueKind {
     String(String),
     Number(f64),
@@ -111,7 +111,7 @@ impl ValueKind {
 pub type StringValue = BaseValue<String>;
 pub type I64Value = BaseValue<i64>;
 
-#[derive(Debug)]
+#[derive(PartialEq, Eq, Debug)]
 pub enum BaseValue<T> {
     Unknown,
     Null,
@@ -276,16 +276,27 @@ impl Value {
     pub fn msg_unpack(data: &[u8], typ: &Type) -> DResult<Self> {
         tracing::debug!(?typ, ?data, "Unpacking message");
         let mut read = io::Cursor::new(data);
-        Self::msg_unpack_inner(&mut read, typ)
+        Self::msg_unpack_inner(&mut read, typ).map_err(|mut diag| {
+            diag.diags[0].msg = format!("msgpack decoding error: {}", diag.diags[0].msg);
+            diag
+        })
     }
 
     fn msg_unpack_inner(rd: &mut io::Cursor<&[u8]>, typ: &Type) -> DResult<Self> {
         use rmp::decode as mp;
 
+        let start = rd.position();
+
         if let Ok(()) = mp::read_nil(rd) {
             return Ok(Value::Null);
         }
-        rd.set_position(rd.position() - 1); // revert past the nil
+        rd.set_position(start);
+        // TODO: Handle unknown values better
+        // https://github.com/hashicorp/terraform/blob/main/docs/plugin-protocol/object-wire-format.md#schemaattribute-mapping-rules-for-messagepack
+        if let Ok(_) = mp::read_fixext1(rd) {
+            return Ok(Value::Unknown);
+        }
+        rd.set_position(start);
 
         let read_string = |rd: &mut io::Cursor<&[u8]>| -> DResult<String> {
             let len = std::cmp::min(mp::read_str_len(rd)?, 1024 * 1024); // you're not gonna get more than a 1MB string...
@@ -347,6 +358,7 @@ impl Value {
             Type::Object { attrs, optionals } => {
                 assert!(optionals.is_empty());
                 let len = mp::read_map_len(rd)?;
+                dbg!(len);
 
                 if attrs.len() != (len as usize) {
                     return Err(Diagnostic::error_string(format!(
@@ -358,10 +370,13 @@ impl Value {
                 let elems = (0..len)
                     .map(|_| -> DResult<_> {
                         let key = read_string(rd)?;
+                        dbg!(&key);
                         let typ = attrs.get(&key).ok_or_else(|| {
                             Diagnostic::error_string(format!("unexpected attribute: '{key}'"))
                         })?;
+                        dbg!(typ);
                         let value = Value::msg_unpack_inner(rd, typ)?;
+                        dbg!(&value);
                         Ok((key, value))
                     })
                     .collect::<DResult<BTreeMap<_, _>>>()?;
@@ -386,5 +401,48 @@ impl Value {
         };
 
         Ok(Value::Known(value))
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use std::collections::{BTreeMap, HashMap};
+
+    use crate::{Type, Value, ValueKind};
+
+    #[test]
+    fn decode_object() {
+        let typ = Type::Object {
+            attrs: HashMap::from([
+                ("id".into(), Type::String),
+                ("discord_id".into(), Type::String),
+                ("name".into(), Type::String),
+                ("description".into(), Type::String),
+            ]),
+            optionals: vec![],
+        };
+        let data = [
+            132, 171, 100, 101, 115, 99, 114, 105, 112, 116, 105, 111, 110, 163, 63, 63, 63, 170,
+            100, 105, 115, 99, 111, 114, 100, 95, 105, 100, 192, 162, 105, 100, 212, 0, 0, 164,
+            110, 97, 109, 101, 164, 109, 101, 111, 119,
+        ];
+
+        let value = Value::msg_unpack(&data, &typ);
+
+        assert_eq!(
+            value.unwrap(),
+            Value::Known(ValueKind::Object(BTreeMap::from([
+                (
+                    "description".into(),
+                    Value::Known(ValueKind::String("???".into()))
+                ),
+                ("discord_id".into(), Value::Null),
+                ("id".into(), Value::Unknown),
+                (
+                    "name".into(),
+                    Value::Known(ValueKind::String("meow".into()))
+                ),
+            ])))
+        );
     }
 }

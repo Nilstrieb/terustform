@@ -1,5 +1,6 @@
 #![allow(unused_variables, unused_imports)]
 
+
 pub mod tfplugin6 {
     tonic::include_proto!("tfplugin6");
 }
@@ -232,6 +233,7 @@ impl<P: crate::provider::Provider> Provider for super::ProviderHandler<P> {
                 &req.config,
             )
             .await;
+        tracing::debug!(?new_state, ?diagnostics, "post apply_resource_change");
 
         let reply = tfplugin6::apply_resource_change::Response {
             new_state,

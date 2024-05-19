@@ -343,6 +343,8 @@ impl<P: Provider> ProviderHandler<P> {
             tf_try!(rs.rs.update(config, planned_state, prior_state).await)
         };
 
+        info!(?new_state, "Hello world");
+
         (new_state.into_tfplugin(), TF_OK)
     }
 }
