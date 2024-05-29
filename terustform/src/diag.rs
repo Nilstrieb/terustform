@@ -66,13 +66,13 @@ pub trait EyreExt<T> {
 
 impl<T> EyreExt<T> for Result<T, eyre::Report> {
     fn eyre_to_tf(self) -> DResult<T> {
-        self.map_err(|e| Diagnostic::error_string(format!("{:?}", e)).into())
+        self.map_err(|e| Diagnostic::error_string(format!("{e:?}")).into())
     }
 }
 
 impl<E: std::error::Error + std::fmt::Debug> From<E> for Diagnostic {
     fn from(value: E) -> Self {
-        Self::error_string(format!("{:?}", value))
+        Self::error_string(format!("{value:?}"))
     }
 }
 impl<E: std::error::Error + std::fmt::Debug> From<E> for Diagnostics {

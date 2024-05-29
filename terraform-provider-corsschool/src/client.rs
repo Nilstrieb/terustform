@@ -40,27 +40,23 @@ impl CorsClient {
     }
 
     pub async fn get_hugo(&self) -> Result<String> {
-        Ok(do_request(self.client.get(format!("{URL}/hugo")))
+        do_request(self.client.get(format!("{URL}/hugo")))
             .await?
             .text()
             .await
-            .wrap_err("failed to get hugo")?)
+            .wrap_err("failed to get hugo")
     }
 
     pub async fn get_class(&self, id: &str) -> Result<dto::Class> {
-        Ok(
-            do_request_body(self.client.get(format!("{URL}/classes/{id}")))
-                .await
-                .wrap_err("failed to get class")?,
-        )
+        do_request_body(self.client.get(format!("{URL}/classes/{id}")))
+            .await
+            .wrap_err("failed to get class")
     }
 
     pub async fn post_class(&self, class: &dto::Class) -> Result<dto::Class> {
-        Ok(
-            do_request_body(self.client.post(format!("{URL}/classes")).json(class))
-                .await
-                .wrap_err("creating class")?,
-        )
+        do_request_body(self.client.post(format!("{URL}/classes")).json(class))
+            .await
+            .wrap_err("creating class")
     }
 }
 

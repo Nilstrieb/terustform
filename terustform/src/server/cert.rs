@@ -17,7 +17,7 @@ pub fn generate_cert() -> Result<(tonic::transport::Identity, rcgen::Certificate
     ];
     params.is_ca = IsCa::Ca(rcgen::BasicConstraints::Unconstrained);
     params.not_before = time::OffsetDateTime::now_utc().saturating_add(Duration::seconds(-30));
-    params.not_after = time::OffsetDateTime::now_utc().saturating_add(Duration::seconds(262980));
+    params.not_after = time::OffsetDateTime::now_utc().saturating_add(Duration::seconds(262_980));
     let mut dn = DistinguishedName::new();
     dn.push(DnType::OrganizationName, "HashiCorp");
     dn.push(DnType::CommonName, "localhost");

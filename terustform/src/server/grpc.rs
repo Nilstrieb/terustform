@@ -1,10 +1,12 @@
 #![allow(unused_variables, unused_imports)]
 
 
+#[allow(warnings)]
 pub mod tfplugin6 {
     tonic::include_proto!("tfplugin6");
 }
 
+#[allow(warnings)]
 pub mod plugin {
     tonic::include_proto!("plugin");
 }

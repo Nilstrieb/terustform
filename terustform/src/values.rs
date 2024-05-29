@@ -75,7 +75,7 @@ impl Type {
                 if !optionals.is_empty() {
                     parts.push(Value::Array(
                         optionals.iter().map(|v| Value::String(v.clone())).collect(),
-                    ))
+                    ));
                 }
 
                 Value::Array(parts)
@@ -302,7 +302,7 @@ impl Value {
         rd.set_position(start);
         // TODO: Handle unknown values better
         // https://github.com/hashicorp/terraform/blob/main/docs/plugin-protocol/object-wire-format.md#schemaattribute-mapping-rules-for-messagepack
-        if let Ok(_) = mp::read_fixext1(rd) {
+        if mp::read_fixext1(rd).is_ok() {
             return Ok(Value::Unknown);
         }
         rd.set_position(start);
@@ -388,7 +388,10 @@ impl Value {
                 for expected_attr in attrs.keys() {
                     let is_ok = elems.contains_key(expected_attr);
                     if !is_ok && !optionals.contains(expected_attr) {
-                        return Err(Diagnostic::error_string(format!("expected attribute '{expected_attr}', but it was not present")).into())
+                        return Err(Diagnostic::error_string(format!(
+                            "expected attribute '{expected_attr}', but it was not present"
+                        ))
+                        .into());
                     }
                 }
 
