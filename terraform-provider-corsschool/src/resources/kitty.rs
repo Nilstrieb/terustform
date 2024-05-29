@@ -53,7 +53,7 @@ impl DataSource for ExampleDataSource {
                         },
                         "right" => Attribute::String {
                             description: "meow".to_owned(),
-                            mode: Mode::Required,
+                            mode: Mode::Optional,
                             sensitive: false,
                         },
                     },

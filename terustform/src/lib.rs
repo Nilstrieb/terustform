@@ -42,10 +42,11 @@ pub async fn start<P: Provider>(provider: P) -> eyre::Result<()> {
     server::serve(provider).await
 }
 
-/// ```rust
+/// ```rust,no_run
 /// # use std::collections::HashMap;
-/// let x: HashMap<String, u8> = terustform::attrs! {
-///     "hello" => 0,
+/// # let attr: terustform::Attribute = todo!();
+/// let x: HashMap<String, terustform::Attribute> = terustform::attrs! {
+///     "hello" => attr,
 /// };
 /// ```
 #[macro_export]
@@ -53,7 +54,7 @@ macro_rules! attrs {
     (
         $( $name:literal => $rhs:expr ,)*
     ) => {
-        <$crate::__derive_private::HashMap<_, _> as $crate::__derive_private::FromIterator<(_, _)>>::from_iter([
+        $crate::__derive_private::FromIterator::from_iter([
             $(
                 (
                     $name.into(),
@@ -69,7 +70,7 @@ macro_rules! attrs {
 pub mod __derive_private {
     pub use crate::{
         AttrPath, AttrPathSegment, BaseValue, DResult, Diagnostic, Diagnostics, Value, ValueKind,
-        ValueModel,
+        ValueModel, Attribute,
     };
     pub use {std::collections::HashMap, Clone, FromIterator, Option::Some, Result::Err, ToOwned};
 

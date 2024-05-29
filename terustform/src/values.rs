@@ -2,7 +2,7 @@
 //                           tftypes                    for types and values
 
 use std::{
-    collections::{BTreeMap, HashMap},
+    collections::BTreeMap,
     io::{self, Read},
 };
 
@@ -29,7 +29,7 @@ pub enum Type {
     /// A bunch of unordered string-value pairs of different types.
     /// The attributes are statically known.
     Object {
-        attrs: HashMap<String, Type>,
+        attrs: BTreeMap<String, Type>,
         /// The attributes in `attrs` that are optional.
         /// Always empty for now because of JSON reasons.
         optionals: Vec<String>,
@@ -41,6 +41,8 @@ pub enum Type {
 }
 
 impl Type {
+    // tftypes/type.go
+    // https://github.com/hashicorp/terraform-plugin-go/blob/05dc75aefa5b71406022d0ac08eca99f44fbf378/tftypes/type.go#L95
     pub fn to_json(&self) -> String {
         let value = self.to_json_inner();
         serde_json::to_string(&value).unwrap()
@@ -59,18 +61,25 @@ impl Type {
             Self::List { elem } => compound("list", elem.to_json_inner()),
             Self::Map { elem } => compound("map", elem.to_json_inner()),
             Self::Set { elem } => compound("set", elem.to_json_inner()),
-            Self::Object {
-                attrs,
-                optionals: _,
-            } => compound(
-                "object",
-                Value::Object(
-                    attrs
-                        .iter()
-                        .map(|(k, v)| (k.clone(), v.to_json_inner()))
-                        .collect(),
-                ),
-            ),
+            Self::Object { attrs, optionals } => {
+                let mut parts = vec![
+                    Value::String("object".to_owned()),
+                    Value::Object(
+                        attrs
+                            .iter()
+                            .map(|(k, v)| (k.clone(), v.to_json_inner()))
+                            .collect(),
+                    ),
+                ];
+
+                if !optionals.is_empty() {
+                    parts.push(Value::Array(
+                        optionals.iter().map(|v| Value::String(v.clone())).collect(),
+                    ))
+                }
+
+                Value::Array(parts)
+            }
             Self::Tuple { elems } => compound(
                 "tuple",
                 elems.iter().map(|elem| elem.to_json_inner()).collect(),
@@ -356,9 +365,7 @@ impl Value {
                 ValueKind::Set(elems)
             }
             Type::Object { attrs, optionals } => {
-                assert!(optionals.is_empty());
                 let len = mp::read_map_len(rd)?;
-                dbg!(len);
 
                 if attrs.len() != (len as usize) {
                     return Err(Diagnostic::error_string(format!(
@@ -370,16 +377,21 @@ impl Value {
                 let elems = (0..len)
                     .map(|_| -> DResult<_> {
                         let key = read_string(rd)?;
-                        dbg!(&key);
                         let typ = attrs.get(&key).ok_or_else(|| {
                             Diagnostic::error_string(format!("unexpected attribute: '{key}'"))
                         })?;
-                        dbg!(typ);
                         let value = Value::msg_unpack_inner(rd, typ)?;
-                        dbg!(&value);
                         Ok((key, value))
                     })
                     .collect::<DResult<BTreeMap<_, _>>>()?;
+
+                for expected_attr in attrs.keys() {
+                    let is_ok = elems.contains_key(expected_attr);
+                    if !is_ok && !optionals.contains(expected_attr) {
+                        return Err(Diagnostic::error_string(format!("expected attribute '{expected_attr}', but it was not present")).into())
+                    }
+                }
+
                 ValueKind::Object(elems)
             }
             Type::Tuple { elems } => {
@@ -406,14 +418,69 @@ impl Value {
 
 #[cfg(test)]
 mod test {
-    use std::collections::{BTreeMap, HashMap};
+    use std::collections::BTreeMap;
 
     use crate::{Type, Value, ValueKind};
 
     #[test]
+    fn type_json() {
+        let typs = [
+            (Type::Bool, "\"bool\""),
+            (Type::Number, "\"number\""),
+            (Type::String, "\"string\""),
+            (Type::Dynamic, "\"dynamic\""),
+            (
+                Type::List {
+                    elem: Box::new(Type::String),
+                },
+                r#"["list","string"]"#,
+            ),
+            (
+                Type::Map {
+                    elem: Box::new(Type::String),
+                },
+                r#"["map","string"]"#,
+            ),
+            (
+                Type::Set {
+                    elem: Box::new(Type::String),
+                },
+                r#"["set","string"]"#,
+            ),
+            (
+                Type::Object {
+                    attrs: crate::attrs! {
+                        "meow" => Type::String,
+                        "mrooow" => Type::String,
+                        "uwu" => Type::String,
+                    },
+                    optionals: vec![],
+                },
+                r#"["object",{"meow":"string","mrooow":"string","uwu":"string"}]"#,
+            ),
+            (
+                Type::Object {
+                    attrs: crate::attrs! {
+                        "meow" => Type::String,
+                        "mrooow" => Type::String,
+                        "uwu" => Type::String,
+                    },
+                    optionals: vec!["uwu".to_owned()],
+                },
+                r#"["object",{"meow":"string","mrooow":"string","uwu":"string"},["uwu"]]"#,
+            ),
+        ];
+
+        for (typ, expected) in typs {
+            let actual_str = typ.to_json();
+            assert_eq!(actual_str, expected);
+        }
+    }
+
+    #[test]
     fn decode_object() {
         let typ = Type::Object {
-            attrs: HashMap::from([
+            attrs: BTreeMap::from([
                 ("id".into(), Type::String),
                 ("discord_id".into(), Type::String),
                 ("name".into(), Type::String),

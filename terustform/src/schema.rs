@@ -77,13 +77,24 @@ impl Attribute {
 }
 
 fn attrs_typ(attrs: &HashMap<String, Attribute>) -> Type {
-    let attrs = attrs
+    let attr_tys = attrs
         .iter()
         .map(|(name, attr)| (name.clone(), attr.typ()))
         .collect();
 
+    let optionals = attrs
+        .iter()
+        .filter_map(|(name, attr)| {
+            if attr.mode().optional() {
+                Some(name.clone())
+            } else {
+                None
+            }
+        })
+        .collect();
+
     Type::Object {
-        attrs,
-        optionals: vec![],
+        attrs: attr_tys,
+        optionals,
     }
 }

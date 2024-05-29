@@ -1,4 +1,4 @@
-use crate::{AttrPathSegment, Attribute, Diagnostics, Mode, Schema, Value};
+use crate::{AttrPath, AttrPathSegment, Attribute, Diagnostics, Mode, Schema, Value};
 
 use super::grpc::tfplugin6;
 
@@ -88,33 +88,33 @@ impl Diagnostics {
                 severity: tfplugin6::diagnostic::Severity::Error as _,
                 summary: err.msg,
                 detail: "".to_owned(),
-                attribute: err.attr.map(|attr| -> tfplugin6::AttributePath {
-                    tfplugin6::AttributePath {
-                        steps: attr
-                            .0
-                            .into_iter()
-                            .map(|segment| {
-                                use tfplugin6::attribute_path::step::Selector;
-
-                                tfplugin6::attribute_path::Step {
-                                    selector: Some(match segment {
-                                        AttrPathSegment::AttributeName(name) => {
-                                            Selector::AttributeName(name)
-                                        }
-                                        AttrPathSegment::ElementKeyString(key) => {
-                                            Selector::ElementKeyString(key)
-                                        }
-                                        AttrPathSegment::ElementKeyInt(key) => {
-                                            Selector::ElementKeyInt(key)
-                                        }
-                                    }),
-                                }
-                            })
-                            .collect(),
-                    }
-                }),
+                attribute: err.attr.map(|path| path.into_tfplugin()),
             })
             .collect()
+    }
+}
+
+impl AttrPath {
+    pub(crate) fn into_tfplugin(self) -> tfplugin6::AttributePath {
+        tfplugin6::AttributePath {
+            steps: self
+                .0
+                .into_iter()
+                .map(|segment| {
+                    use tfplugin6::attribute_path::step::Selector;
+
+                    tfplugin6::attribute_path::Step {
+                        selector: Some(match segment {
+                            AttrPathSegment::AttributeName(name) => Selector::AttributeName(name),
+                            AttrPathSegment::ElementKeyString(key) => {
+                                Selector::ElementKeyString(key)
+                            }
+                            AttrPathSegment::ElementKeyInt(key) => Selector::ElementKeyInt(key),
+                        }),
+                    }
+                })
+                .collect(),
+        }
     }
 }
 
