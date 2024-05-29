@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use eyre::Context;
 use terustform::{
     datasource::DataSource, Attribute, DResult, EyreExt, Mode, Schema, StringValue, Value,
@@ -41,14 +39,13 @@ impl DataSource for HugoDataSource {
     fn schema() -> Schema {
         Schema {
             description: "Get Hugo Boss".to_owned(),
-            attributes: HashMap::from([(
-                "hugo".to_owned(),
-                Attribute::String {
+            attributes: terustform::attrs! {
+                "hugo" => Attribute::String {
                     description: "Hugo Boss".to_owned(),
                     mode: Mode::Computed,
                     sensitive: false,
                 },
-            )]),
+            },
         }
     }
 

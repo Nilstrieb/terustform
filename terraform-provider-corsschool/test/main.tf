@@ -19,8 +19,18 @@ data "corsschool_class" "test" {
 output "class" {
   value = data.corsschool_class.test
 }
-
+/*
 resource "corsschool_class" "myclass" {
   name = "meow"
   description = "???"
+}*/
+data "corsschool_kitty" "name" {
+  name = "a"
+  paws = {
+    left = "x"
+    right = "y"
+  }
+}
+output "kitty_paw" {
+  value = data.corsschool_kitty.name.paws.right
 }

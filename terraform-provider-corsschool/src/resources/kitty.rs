@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use terustform::{
     datasource::DataSource, AttrPath, Attribute, DResult, Mode, Schema, StringValue, Value,
     ValueModel,
@@ -13,7 +11,13 @@ pub struct ExampleDataSource {}
 struct ExampleDataSourceModel {
     name: StringValue,
     meow: StringValue,
-    id: StringValue,
+    paws: ExampleDataSourceModelPaws,
+}
+
+#[derive(terustform::Model)]
+struct ExampleDataSourceModelPaws {
+    left: StringValue,
+    right: StringValue,
 }
 
 impl DataSource for ExampleDataSource {
@@ -26,32 +30,35 @@ impl DataSource for ExampleDataSource {
     fn schema() -> Schema {
         Schema {
             description: "an example".to_owned(),
-            attributes: HashMap::from([
-                (
-                    "name".to_owned(),
-                    Attribute::String {
-                        description: "a cool name".to_owned(),
-                        mode: Mode::Required,
-                        sensitive: false,
+            attributes: terustform::attrs! {
+                "name" => Attribute::String {
+                    description: "a cool name".to_owned(),
+                    mode: Mode::Required,
+                    sensitive: false,
+                },
+                "meow" => Attribute::String {
+                    description: "the meow of the cat".to_owned(),
+                    mode: Mode::Computed,
+                    sensitive: false,
+                },
+                "paws" => Attribute::Object {
+                    description: "the ID of the meowy cat".to_owned(),
+                    mode: Mode::Required,
+                    sensitive: false,
+                    attrs: terustform::attrs! {
+                        "left" => Attribute::String {
+                            description: "meow".to_owned(),
+                            mode: Mode::Required,
+                            sensitive: false,
+                        },
+                        "right" => Attribute::String {
+                            description: "meow".to_owned(),
+                            mode: Mode::Required,
+                            sensitive: false,
+                        },
                     },
-                ),
-                (
-                    "meow".to_owned(),
-                    Attribute::String {
-                        description: "the meow of the cat".to_owned(),
-                        mode: Mode::Computed,
-                        sensitive: false,
-                    },
-                ),
-                (
-                    "id".to_owned(),
-                    Attribute::String {
-                        description: "the ID of the meowy cat".to_owned(),
-                        mode: Mode::Computed,
-                        sensitive: false,
-                    },
-                ),
-            ]),
+                },
+            },
         }
     }
 
@@ -67,7 +74,7 @@ impl DataSource for ExampleDataSource {
         let meow = format!("mrrrrr i am {name_str}");
 
         model.meow = StringValue::Known(meow);
-        model.id = StringValue::Known("0".to_owned());
+        model.paws.right = StringValue::Known("O".to_owned());
 
         Ok(model.to_value())
     }

@@ -1,4 +1,4 @@
-use crate::{values::Type, AttrPathSegment, Attribute, Diagnostics, Mode, Schema, Value};
+use crate::{AttrPathSegment, Attribute, Diagnostics, Mode, Schema, Value};
 
 use super::grpc::tfplugin6;
 
@@ -43,13 +43,14 @@ impl Attribute {
             attr.computed = mode.computed();
         };
 
+        attr.r#type = self.typ().to_json().into_bytes();
+
         match self {
             Attribute::String {
                 description,
                 mode,
                 sensitive,
             } => {
-                attr.r#type = Type::String.to_json().into_bytes();
                 attr.description = description;
                 set_modes(&mut attr, mode);
                 attr.sensitive = sensitive;
@@ -59,7 +60,16 @@ impl Attribute {
                 mode,
                 sensitive,
             } => {
-                attr.r#type = Type::Number.to_json().into_bytes();
+                attr.description = description;
+                set_modes(&mut attr, mode);
+                attr.sensitive = sensitive;
+            }
+            Attribute::Object {
+                description,
+                mode,
+                sensitive,
+                attrs: _,
+            } => {
                 attr.description = description;
                 set_modes(&mut attr, mode);
                 attr.sensitive = sensitive;

@@ -50,7 +50,7 @@ fn data_source_model_inner(
             let #tf::Some(#name) = obj.remove(#name_str) else {
                 return #tf::Err(
                     #tf::Diagnostics::from(#tf::Diagnostic::error_string(
-                        format!("Expected property '{}', which was not present", #name_str),
+                        format!("Expected property '{}' when deserializing value, which was not present in the value", #name_str),
                     ).with_path(path.clone()))
                 );
             };

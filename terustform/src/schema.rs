@@ -20,6 +20,12 @@ pub enum Attribute {
         mode: Mode,
         sensitive: bool,
     },
+    Object {
+        description: String,
+        mode: Mode,
+        sensitive: bool,
+        attrs: HashMap<String, Attribute>,
+    },
 }
 
 #[derive(Clone, Copy)]
@@ -35,6 +41,7 @@ impl Attribute {
         match *self {
             Self::Int64 { mode, .. } => mode,
             Self::String { mode, .. } => mode,
+            Self::Object { mode, .. } => mode,
         }
     }
 }
@@ -55,22 +62,28 @@ impl Mode {
 
 impl Schema {
     pub fn typ(&self) -> Type {
-        let attrs = self
-            .attributes
-            .iter()
-            .map(|(name, attr)| {
-                let attr_type = match attr {
-                    Attribute::Int64 { .. } => Type::Number,
-                    Attribute::String { .. } => Type::String,
-                };
+        attrs_typ(&self.attributes)
+    }
+}
 
-                (name.clone(), attr_type)
-            })
-            .collect();
-
-        Type::Object {
-            attrs,
-            optionals: vec![],
+impl Attribute {
+    pub fn typ(&self) -> Type {
+        match self {
+            Attribute::Int64 { .. } => Type::Number,
+            Attribute::String { .. } => Type::String,
+            Attribute::Object { attrs, .. } => attrs_typ(attrs),
         }
+    }
+}
+
+fn attrs_typ(attrs: &HashMap<String, Attribute>) -> Type {
+    let attrs = attrs
+        .iter()
+        .map(|(name, attr)| (name.clone(), attr.typ()))
+        .collect();
+
+    Type::Object {
+        attrs,
+        optionals: vec![],
     }
 }

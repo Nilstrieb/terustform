@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use terustform::{
     resource::Resource, AttrPath, Attribute, DResult, EyreExt, Mode, Schema, Value, ValueModel,
 };
@@ -78,41 +76,28 @@ impl Resource for ClassResource {
     fn schema() -> terustform::Schema {
         Schema {
             description: "A class".into(),
-            attributes: HashMap::from([
-                (
-                    "id".to_owned(),
-                    // TODO: UUID validation :3
-                    Attribute::String {
-                        description: "The UUID".to_owned(),
-                        mode: Mode::Computed,
-                        sensitive: false,
-                    },
-                ),
-                (
-                    "name".to_owned(),
-                    Attribute::String {
-                        description: "The description".to_owned(),
-                        mode: Mode::Required,
-                        sensitive: false,
-                    },
-                ),
-                (
-                    "description".to_owned(),
-                    Attribute::String {
-                        description: "The description".to_owned(),
-                        mode: Mode::Required,
-                        sensitive: false,
-                    },
-                ),
-                (
-                    "discord_id".to_owned(),
-                    Attribute::String {
-                        description: "The discord ID of the class".to_owned(),
-                        mode: Mode::Optional,
-                        sensitive: false,
-                    },
-                ),
-            ]),
+            attributes: terustform::attrs! {
+                "id" => Attribute::String {
+                    description: "The UUID".to_owned(),
+                    mode: Mode::Computed,
+                    sensitive: false,
+                },
+                "name" => Attribute::String {
+                    description: "The description".to_owned(),
+                    mode: Mode::Required,
+                    sensitive: false,
+                },
+                "description" => Attribute::String {
+                    description: "The description".to_owned(),
+                    mode: Mode::Required,
+                    sensitive: false,
+                },
+                "discord_id" => Attribute::String {
+                    description: "The discord ID of the class".to_owned(),
+                    mode: Mode::Optional,
+                    sensitive: false,
+                },
+            },
         }
     }
 
